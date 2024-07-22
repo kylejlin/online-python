@@ -46,7 +46,9 @@ export class App extends React.Component<AppProps, AppState> {
             />
           </div>
 
-          <div className="Console"></div>
+          <div className="Console">
+            <span className="ConsoleText">{DEFAULT_EDITOR_VALUE}</span>
+          </div>
         </main>
       </div>
     );
