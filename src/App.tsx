@@ -29,12 +29,19 @@ export class App extends React.Component<AppProps, AppState> {
   render() {
     return (
       <div className="App">
-        <Editor
-          height="90vh"
-          defaultLanguage="python"
-          defaultValue={DEFAULT_EDITOR_VALUE}
-          onChange={this.handleEditorChange}
-        />
+        <header className="Header"></header>
+
+        <main className="Main">
+          <div className="EditorContainer">
+            <Editor
+              defaultLanguage="python"
+              defaultValue={DEFAULT_EDITOR_VALUE}
+              onChange={this.handleEditorChange}
+            />
+          </div>
+
+          <div className="Console"></div>
+        </main>
       </div>
     );
   }
