@@ -25,6 +25,17 @@ export const loadPyodide: (options?: {
     | PromiseLike<Uint8Array | ArrayBuffer>;
 }) => Promise<PyodideInterface> = (window as any).loadPyodide;
 
-export const pyodide = loadPyodide({
-  //   indexURL: process.env.PUBLIC_URL + "/pyodide_0.26.1",
+export const simulatedStdout: string[] = [];
+export const simulatedStderr: string[] = [];
+
+export const pyodideProm = loadPyodide({
+  stdin: (): string => window.prompt() ?? "",
+  stdout: (msg: string): void => {
+    simulatedStdout.push(msg);
+  },
+  stderr: (msg: string): void => {
+    simulatedStderr.push(msg);
+  },
 });
+
+export type { PyodideInterface };

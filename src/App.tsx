@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import { Editor, loader } from "@monaco-editor/react";
-import { pyodide } from "./pyodide";
+import { pyodideProm, PyodideInterface, simulatedStdout } from "./pyodide";
 
 loader.config({
   paths: {
@@ -14,22 +14,21 @@ const DEFAULT_EDITOR_VALUE =
 
 interface AppProps {}
 
-pyodide.then((pyodide) => {
-  console.log("loaded");
-  console.log("test", pyodide.runPython("5+3"));
-});
-
 interface AppState {
+  readonly hasPyodideLoaded: boolean;
   readonly editorValue: string;
   readonly isConsoleAcceptingInput: boolean;
   readonly consoleInputValue: string;
 }
 
 export class App extends React.Component<AppProps, AppState> {
+  pyodide: undefined | PyodideInterface;
+
   constructor(props: AppProps) {
     super(props);
 
     this.state = {
+      hasPyodideLoaded: false,
       editorValue: DEFAULT_EDITOR_VALUE,
       isConsoleAcceptingInput: false,
       consoleInputValue: "",
@@ -38,16 +37,37 @@ export class App extends React.Component<AppProps, AppState> {
     this.bindMethods();
   }
 
+  componentDidMount(): void {
+    pyodideProm.then((pyodide) => {
+      this.pyodide = pyodide;
+      this.setState({
+        hasPyodideLoaded: true,
+      });
+    });
+  }
+
   bindMethods(): void {
     this.handleEditorChange = this.handleEditorChange.bind(this);
     this.handleConsoleInputChange = this.handleConsoleInputChange.bind(this);
+    this.handleRunRequest = this.handleRunRequest.bind(this);
   }
 
   render() {
     return (
       <div className="App">
         <header className="Header">
-          <button className="Button SmallSideMargin">Run</button>
+          {this.state.hasPyodideLoaded ? (
+            <button
+              className="Button SmallSideMargin"
+              onClick={this.handleRunRequest}
+            >
+              Run
+            </button>
+          ) : (
+            <div className="PyodideLoadingNotification SmallSideMargin">
+              Loading...
+            </div>
+          )}
         </header>
 
         <main className="Main">
@@ -92,5 +112,10 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState({
       consoleInputValue: event.target.value,
     });
+  }
+
+  handleRunRequest(): void {
+    simulatedStdout.splice(0, simulatedStdout.length);
+    this.pyodide!.runPython(this.state.editorValue);
   }
 }
