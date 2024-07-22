@@ -1,6 +1,12 @@
 import React from "react";
 import "./App.css";
-import Editor from "@monaco-editor/react";
+import { Editor, loader } from "@monaco-editor/react";
+
+loader.config({
+  paths: {
+    vs: process.env.PUBLIC_URL + "/monaco_support_0.46.0/min/vs",
+  },
+});
 
 const DEFAULT_EDITOR_VALUE =
   'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")';
