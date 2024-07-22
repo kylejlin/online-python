@@ -1,6 +1,7 @@
 import React from "react";
 import "./App.css";
 import { Editor, loader } from "@monaco-editor/react";
+import { pyodide } from "./pyodide";
 
 loader.config({
   paths: {
@@ -12,6 +13,11 @@ const DEFAULT_EDITOR_VALUE =
   'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")';
 
 interface AppProps {}
+
+pyodide.then((pyodide) => {
+  console.log("loaded");
+  console.log("test", pyodide.runPython("5+3"));
+});
 
 interface AppState {
   readonly editorValue: string;
