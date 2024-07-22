@@ -1,7 +1,8 @@
 import React from "react";
 import "./App.css";
 import { Editor, loader } from "@monaco-editor/react";
-import { pyodideProm, PyodideInterface, simulatedStdout } from "./pyodide";
+import { pyodideProm, PyodideInterface } from "./pyodide";
+import { ConsoleEntry, getGlobalConsoleEntries } from "./console";
 
 loader.config({
   paths: {
@@ -17,13 +18,7 @@ interface AppProps {}
 interface AppState {
   readonly hasPyodideLoaded: boolean;
   readonly editorValue: string;
-  readonly consoleSegments: readonly ConsoleSegment[];
-}
-
-interface ConsoleSegment {
-  readonly isInput: boolean;
-  readonly isError: boolean;
-  readonly value: string;
+  readonly terminalLog: readonly ConsoleEntry[];
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -35,7 +30,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.state = {
       hasPyodideLoaded: false,
       editorValue: DEFAULT_EDITOR_VALUE,
-      consoleSegments: [],
+      terminalLog: [],
     };
 
     this.bindMethods();
@@ -84,13 +79,13 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="ConsoleContainer">
             <div className="Console">
-              {this.state.consoleSegments.map((segment, index) => (
+              {this.state.terminalLog.map((segment, index) => (
                 <span
                   className={
                     "ConsoleText" +
-                    (segment.isInput
+                    (segment.kind === "input"
                       ? " ConsoleText--stdin"
-                      : segment.isError
+                      : segment.kind === "error"
                       ? " ConsoleText--stderr"
                       : " ConsoleText--stdout")
                   }
@@ -118,16 +113,9 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleRunRequest(): void {
-    simulatedStdout.splice(0, simulatedStdout.length);
     this.pyodide!.runPython(this.state.editorValue);
-    this.setState((prevState) => ({
-      consoleSegments: prevState.consoleSegments.concat(
-        simulatedStdout.map((value) => ({
-          isInput: false,
-          isError: false,
-          value,
-        }))
-      ),
+    this.setState(() => ({
+      terminalLog: getGlobalConsoleEntries(),
     }));
   }
 }
