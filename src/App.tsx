@@ -17,8 +17,13 @@ interface AppProps {}
 interface AppState {
   readonly hasPyodideLoaded: boolean;
   readonly editorValue: string;
-  readonly isConsoleAcceptingInput: boolean;
-  readonly consoleInputValue: string;
+  readonly consoleSegments: readonly ConsoleSegment[];
+}
+
+interface ConsoleSegment {
+  readonly isInput: boolean;
+  readonly isError: boolean;
+  readonly value: string;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -30,8 +35,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.state = {
       hasPyodideLoaded: false,
       editorValue: DEFAULT_EDITOR_VALUE,
-      isConsoleAcceptingInput: false,
-      consoleInputValue: "",
+      consoleSegments: [],
     };
 
     this.bindMethods();
@@ -48,7 +52,6 @@ export class App extends React.Component<AppProps, AppState> {
 
   bindMethods(): void {
     this.handleEditorChange = this.handleEditorChange.bind(this);
-    this.handleConsoleInputChange = this.handleConsoleInputChange.bind(this);
     this.handleRunRequest = this.handleRunRequest.bind(this);
   }
 
@@ -81,15 +84,21 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="ConsoleContainer">
             <div className="Console">
-              <span className="ConsoleOutput">{DEFAULT_EDITOR_VALUE}</span>
-              {this.state.isConsoleAcceptingInput && (
-                <input
-                  className="ConsoleInput"
-                  size={Math.max(1, this.state.consoleInputValue.length)}
-                  value={this.state.consoleInputValue}
-                  onChange={this.handleConsoleInputChange}
-                />
-              )}
+              {this.state.consoleSegments.map((segment, index) => (
+                <span
+                  className={
+                    "ConsoleText" +
+                    (segment.isInput
+                      ? " ConsoleText--stdin"
+                      : segment.isError
+                      ? " ConsoleText--stderr"
+                      : " ConsoleText--stdout")
+                  }
+                  key={index}
+                >
+                  {segment.value + "\n"}
+                </span>
+              ))}
             </div>
           </div>
         </main>
@@ -108,14 +117,17 @@ export class App extends React.Component<AppProps, AppState> {
     console.log(value);
   }
 
-  handleConsoleInputChange(event: React.ChangeEvent<HTMLInputElement>): void {
-    this.setState({
-      consoleInputValue: event.target.value,
-    });
-  }
-
   handleRunRequest(): void {
     simulatedStdout.splice(0, simulatedStdout.length);
     this.pyodide!.runPython(this.state.editorValue);
+    this.setState((prevState) => ({
+      consoleSegments: prevState.consoleSegments.concat(
+        simulatedStdout.map((value) => ({
+          isInput: false,
+          isError: false,
+          value,
+        }))
+      ),
+    }));
   }
 }
