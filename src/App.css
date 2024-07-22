@@ -7,12 +7,20 @@
 }
 
 .Header {
-  background-color: pink;
+  background-color: #ebeced;
   position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: var(--header-height);
+
+  display: flex;
+  justify-content: center;
+  align-content: left;
+  flex-direction: column;
+
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .Main {
@@ -68,4 +76,33 @@
   background-color: black;
   color: white;
   caret-color: transparent;
+}
+
+.Button {
+  color: white;
+  background-color: green;
+  font-size: 12px;
+  font-weight: bold;
+
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+
+  cursor: pointer;
+
+  display: inline-block;
+  width: min-content;
+}
+
+.Button:hover {
+  filter: contrast(0.8) brightness(1.2);
+}
+
+.Button:disabled {
+  cursor: not-allowed;
+}
+
+.SmallSideMargin {
+  margin-left: 8px;
+  margin-right: 8px;
 }

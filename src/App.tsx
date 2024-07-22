@@ -40,7 +40,9 @@ export class App extends React.Component<AppProps, AppState> {
   render() {
     return (
       <div className="App">
-        <header className="Header"></header>
+        <header className="Header">
+          <button className="Button SmallSideMargin">Run</button>
+        </header>
 
         <main className="Main">
           <div className="EditorContainer">
