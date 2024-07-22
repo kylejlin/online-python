@@ -31,7 +31,7 @@
   height: 100%;
 }
 
-.Console {
+.ConsoleContainer {
   background-color: #fffffe;
   position: absolute;
   top: 0;
@@ -40,7 +40,12 @@
   height: 100%;
 }
 
-.ConsoleText {
+.Console {
+  padding: 4px;
+}
+
+.ConsoleOutput,
+.ConsoleInput {
   font-family: Menlo, Monaco, "Courier New", monospace;
   font-weight: normal;
   font-size: 12px;
@@ -49,4 +54,18 @@
   line-height: 18px;
   letter-spacing: 0px;
   white-space: pre;
+}
+
+.ConsoleInput {
+  outline: none;
+  border-radius: 0;
+  border: 1px solid black;
+  width: min-content;
+  min-height: 12px;
+}
+
+.ConsoleInput:focus {
+  background-color: black;
+  color: white;
+  caret-color: transparent;
 }
