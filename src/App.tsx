@@ -30,6 +30,8 @@ interface ConsoleEntry {
 export class App extends React.Component<AppProps, AppState> {
   pyodide: undefined | PyodideInterface;
 
+  synchronousConsoleEntries: ConsoleEntry[];
+
   constructor(props: AppProps) {
     super(props);
 
@@ -38,6 +40,8 @@ export class App extends React.Component<AppProps, AppState> {
       editorValue: DEFAULT_EDITOR_VALUE,
       consoleEntries: [],
     };
+
+    this.synchronousConsoleEntries = [];
 
     this.bindMethods();
   }
@@ -139,36 +143,42 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleStdinRequest(): string {
-    const raw = window.prompt() ?? "";
+    const fullConsoleText = this.synchronousConsoleEntries
+      .map((segment) => segment.value)
+      .join("");
+    const promptMessage = fullConsoleText.slice(
+      fullConsoleText.lastIndexOf("\n") + 1
+    );
+    const raw = window.prompt(promptMessage) ?? "";
     const normalized = raw.endsWith("\n") ? raw : raw + "\n";
+    const entry: ConsoleEntry = { kind: "input", value: normalized };
     this.setState((prevState) => ({
       ...prevState,
-      consoleEntries: prevState.consoleEntries.concat([
-        { kind: "input", value: normalized },
-      ]),
+      consoleEntries: prevState.consoleEntries.concat([entry]),
     }));
+    this.synchronousConsoleEntries.push(entry);
     return normalized;
   }
 
   handleStdoutRequest(output: Uint8Array): number {
     const text = new TextDecoder().decode(output);
+    const entry: ConsoleEntry = { kind: "output", value: text };
     this.setState((prevState) => ({
       ...prevState,
-      consoleEntries: prevState.consoleEntries.concat([
-        { kind: "output", value: text },
-      ]),
+      consoleEntries: prevState.consoleEntries.concat([entry]),
     }));
+    this.synchronousConsoleEntries.push(entry);
     return output.length;
   }
 
   handleStderrRequest(output: Uint8Array): number {
     const text = new TextDecoder().decode(output);
+    const entry: ConsoleEntry = { kind: "error", value: text };
     this.setState((prevState) => ({
       ...prevState,
-      consoleEntries: prevState.consoleEntries.concat([
-        { kind: "error", value: text },
-      ]),
+      consoleEntries: prevState.consoleEntries.concat([entry]),
     }));
+    this.synchronousConsoleEntries.push(entry);
     return output.length;
   }
 }
