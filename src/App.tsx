@@ -29,16 +29,12 @@ interface ConsoleEntry {
 
 export class App extends React.Component<AppProps, AppState> {
   pyodide: undefined | PyodideInterface;
+  pyodideWorker: undefined | Worker;
 
   synchronousConsoleEntries: ConsoleEntry[];
 
   constructor(props: AppProps) {
     super(props);
-
-    const x = new Worker(
-      new URL("./workers/pyodideWorker.ts", import.meta.url)
-    );
-    x.postMessage("message");
 
     this.state = {
       hasPyodideLoaded: false,
@@ -63,6 +59,18 @@ export class App extends React.Component<AppProps, AppState> {
         hasPyodideLoaded: true,
       });
     });
+
+    const pyodideWorker = new Worker(
+      new URL("./workers/pyodideWorker.ts", import.meta.url)
+    );
+    pyodideWorker.onmessage = (event) => {
+      console.log("worker response received", event.data);
+    };
+    this.pyodideWorker = pyodideWorker;
+  }
+
+  componentWillUnmount(): void {
+    this.pyodideWorker?.terminate();
   }
 
   bindMethods(): void {
@@ -135,6 +143,13 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleRunRequest(): void {
+    if (this.pyodideWorker !== undefined) {
+      this.pyodideWorker.postMessage({
+        kind: "run",
+        code: this.state.editorValue,
+      });
+    }
+
     this.synchronousConsoleEntries = [];
     this.setState({ consoleEntries: [] }, () => {
       try {
