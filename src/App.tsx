@@ -130,16 +130,19 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleRunRequest(): void {
-    try {
-      this.pyodide!.runPython(this.state.editorValue);
-    } catch (error) {
-      this.setState((prevState) => ({
-        ...prevState,
-        consoleEntries: prevState.consoleEntries.concat([
-          { kind: "error", value: String(error) },
-        ]),
-      }));
-    }
+    this.synchronousConsoleEntries = [];
+    this.setState({ consoleEntries: [] }, () => {
+      try {
+        this.pyodide!.runPython(this.state.editorValue);
+      } catch (error) {
+        this.setState((prevState) => ({
+          ...prevState,
+          consoleEntries: prevState.consoleEntries.concat([
+            { kind: "error", value: String(error) },
+          ]),
+        }));
+      }
+    });
   }
 
   handleStdinRequest(): string {
