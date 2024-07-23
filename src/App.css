@@ -5,6 +5,9 @@
   padding: 0;
   --header-height: 48px;
   font-size: 12px;
+  --blue: #4e97fe;
+  --red: #e60000;
+  --green: green;
 }
 
 .Header {
@@ -65,9 +68,17 @@
   white-space: pre;
 }
 
+.ConsoleText--stdin {
+  color: var(--green);
+}
+
+.ConsoleText--stderr {
+  color: var(--red);
+}
+
 .Button {
   color: white;
-  background-color: green;
+  background-color: var(--green);
   font-size: 12px;
   font-weight: bold;
 
