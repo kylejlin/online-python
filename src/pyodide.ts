@@ -1,5 +1,4 @@
 import type { PyodideInterface } from "pyodide";
-import { appendGlobalConsoleEntry } from "./console";
 
 export const loadPyodide: (options?: {
   indexURL?: string;
@@ -26,18 +25,6 @@ export const loadPyodide: (options?: {
     | PromiseLike<Uint8Array | ArrayBuffer>;
 }) => Promise<PyodideInterface> = (window as any).loadPyodide;
 
-export const pyodideProm = loadPyodide({
-  stdin: (): string => {
-    const value = window.prompt() ?? "";
-    appendGlobalConsoleEntry({ kind: "input", value });
-    return value;
-  },
-  stdout: (msg: string): void => {
-    appendGlobalConsoleEntry({ kind: "output", value: msg });
-  },
-  stderr: (msg: string): void => {
-    appendGlobalConsoleEntry({ kind: "error", value: msg });
-  },
-});
+export const pyodideProm = loadPyodide();
 
 export type { PyodideInterface };

@@ -2,7 +2,6 @@ import React from "react";
 import "./App.css";
 import { Editor, loader } from "@monaco-editor/react";
 import { pyodideProm, PyodideInterface } from "./pyodide";
-import { ConsoleEntry, getGlobalConsoleEntries } from "./console";
 
 loader.config({
   paths: {
@@ -11,14 +10,21 @@ loader.config({
 });
 
 const DEFAULT_EDITOR_VALUE =
-  'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")';
+  'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\nprint("Done")';
 
 interface AppProps {}
 
 interface AppState {
   readonly hasPyodideLoaded: boolean;
   readonly editorValue: string;
-  readonly terminalLog: readonly ConsoleEntry[];
+  readonly consoleEntries: readonly ConsoleEntry[];
+}
+
+type ConsoleEntryKind = "input" | "output" | "error";
+
+interface ConsoleEntry {
+  readonly kind: ConsoleEntryKind;
+  readonly value: string;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -30,7 +36,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.state = {
       hasPyodideLoaded: false,
       editorValue: DEFAULT_EDITOR_VALUE,
-      terminalLog: [],
+      consoleEntries: [],
     };
 
     this.bindMethods();
@@ -38,7 +44,12 @@ export class App extends React.Component<AppProps, AppState> {
 
   componentDidMount(): void {
     pyodideProm.then((pyodide) => {
+      pyodide.setStdin({ stdin: this.handleStdinRequest });
+      pyodide.setStdout({ write: this.handleStdoutRequest });
+      pyodide.setStderr({ write: this.handleStderrRequest });
+
       this.pyodide = pyodide;
+
       this.setState({
         hasPyodideLoaded: true,
       });
@@ -48,6 +59,9 @@ export class App extends React.Component<AppProps, AppState> {
   bindMethods(): void {
     this.handleEditorChange = this.handleEditorChange.bind(this);
     this.handleRunRequest = this.handleRunRequest.bind(this);
+    this.handleStdinRequest = this.handleStdinRequest.bind(this);
+    this.handleStdoutRequest = this.handleStdoutRequest.bind(this);
+    this.handleStderrRequest = this.handleStderrRequest.bind(this);
   }
 
   render() {
@@ -79,7 +93,7 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="ConsoleContainer">
             <div className="Console">
-              {this.state.terminalLog.map((segment, index) => (
+              {this.state.consoleEntries.map((segment, index) => (
                 <span
                   className={
                     "ConsoleText" +
@@ -91,7 +105,7 @@ export class App extends React.Component<AppProps, AppState> {
                   }
                   key={index}
                 >
-                  {segment.value + "\n"}
+                  {segment.value}
                 </span>
               ))}
             </div>
@@ -109,13 +123,43 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState({
       editorValue: value,
     });
-    console.log(value);
   }
 
   handleRunRequest(): void {
     this.pyodide!.runPython(this.state.editorValue);
-    this.setState(() => ({
-      terminalLog: getGlobalConsoleEntries(),
+  }
+
+  handleStdinRequest(): string {
+    const raw = window.prompt() ?? "";
+    const normalized = raw.endsWith("\n") ? raw : raw + "\n";
+    this.setState((prevState) => ({
+      ...prevState,
+      consoleEntries: prevState.consoleEntries.concat([
+        { kind: "input", value: normalized },
+      ]),
     }));
+    return normalized;
+  }
+
+  handleStdoutRequest(output: Uint8Array): number {
+    const text = new TextDecoder().decode(output);
+    this.setState((prevState) => ({
+      ...prevState,
+      consoleEntries: prevState.consoleEntries.concat([
+        { kind: "output", value: text },
+      ]),
+    }));
+    return output.length;
+  }
+
+  handleStderrRequest(output: Uint8Array): number {
+    const text = new TextDecoder().decode(output);
+    this.setState((prevState) => ({
+      ...prevState,
+      consoleEntries: prevState.consoleEntries.concat([
+        { kind: "error", value: text },
+      ]),
+    }));
+    return output.length;
   }
 }
