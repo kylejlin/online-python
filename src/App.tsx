@@ -35,6 +35,11 @@ export class App extends React.Component<AppProps, AppState> {
   constructor(props: AppProps) {
     super(props);
 
+    const x = new Worker(
+      new URL("./workers/pyodideWorker.ts", import.meta.url)
+    );
+    x.postMessage("message");
+
     this.state = {
       hasPyodideLoaded: false,
       editorValue: DEFAULT_EDITOR_VALUE,
