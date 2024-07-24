@@ -6,7 +6,7 @@ A simple online Python playground.
 
 ### Pyodide caveat
 
-The Pyodide release at `public/pyodide_0.26.1` exactly matches the official 0.261.1 release except for the following:
+The Pyodide release at `public/pyodide_0.26.1` exactly matches the [official 0.261.1 release](https://github.com/pyodide/pyodide/releases/download/0.26.1/pyodide-0.26.1.tar.bz2) except for the following:
 
 1. `python_flint-0.6.0-cp312-cp312-pyodide_2024_0_wasm32.whl.metadata` is missing
 2. `python_flint-0.6.0-cp312-cp312-pyodide_2024_0_wasm32.whl` is missing
