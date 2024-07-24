@@ -2,6 +2,7 @@ import React from "react";
 import "./App.css";
 import { Editor, loader as monacoLoader } from "@monaco-editor/react";
 import {
+  InterruptSignalCode,
   MessageFromPyodideWorker,
   MessageFromPyodideWorkerKind,
   MessageToPyodideWorker,
@@ -36,6 +37,7 @@ export class App extends React.Component<AppProps, AppState> {
   stdin: string;
   visiblyDeletableStdin: string;
   stdinBusBuffer: SharedArrayBuffer;
+  waitBuffer: SharedArrayBuffer;
   interruptBuffer: SharedArrayBuffer;
   consoleInputRef: React.RefObject<HTMLInputElement>;
 
@@ -62,7 +64,8 @@ export class App extends React.Component<AppProps, AppState> {
     this.stdin = "";
     this.visiblyDeletableStdin = "";
 
-    this.stdinBusBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
+    this.stdinBusBuffer = new SharedArrayBuffer(4 + STDIN_BUFFER_SIZE);
+    this.waitBuffer = new SharedArrayBuffer(4);
     this.interruptBuffer = new SharedArrayBuffer(4);
 
     this.consoleInputRef = React.createRef();
@@ -95,6 +98,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.typesafePostMessage({
       kind: MessageToPyodideWorkerKind.SetSharedBuffers,
       stdinBusBuffer: this.stdinBusBuffer,
+      waitBuffer: this.waitBuffer,
       interruptBuffer: this.interruptBuffer,
     });
   }
@@ -226,11 +230,15 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   clearStdinBusBuffer(): void {
-    Atomics.store(new Uint32Array(this.stdinBusBuffer), 1, 0);
+    Atomics.store(new Uint32Array(this.stdinBusBuffer), 0, 0);
   }
 
   interruptPyodideWorker(): void {
-    Atomics.store(new Int32Array(this.interruptBuffer), 0, 2);
+    Atomics.store(
+      new Int32Array(this.interruptBuffer),
+      0,
+      InterruptSignalCode.Sigint
+    );
   }
 
   clearConsole(): void {
@@ -388,7 +396,7 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   transferStdinToSharedBufferIfWaitingFlagIsSet(): void {
-    const i32arr = new Int32Array(this.stdinBusBuffer);
+    const i32arr = new Int32Array(this.waitBuffer);
     if (Atomics.load(i32arr, 0) !== PyodideWorkerSignalCode.Waiting) {
       return;
     }
@@ -404,16 +412,16 @@ export class App extends React.Component<AppProps, AppState> {
 
     const existingBusContentByteLength = new Uint32Array(
       this.stdinBusBuffer
-    )[1];
+    )[0];
 
     const transferrable = this.stdin.slice(0, lastIndexOfNewline + 1);
     const transferrableBytes = new TextEncoder().encode(transferrable);
     this.stdin = this.stdin.slice(lastIndexOfNewline + 1);
     this.visiblyDeletableStdin = getLastLine(this.stdin);
 
-    new Uint32Array(this.stdinBusBuffer)[1] =
+    new Uint32Array(this.stdinBusBuffer)[0] =
       existingBusContentByteLength + transferrableBytes.byteLength;
-    new Uint8Array(this.stdinBusBuffer, 8 + existingBusContentByteLength).set(
+    new Uint8Array(this.stdinBusBuffer, 4 + existingBusContentByteLength).set(
       transferrableBytes
     );
 
@@ -421,7 +429,7 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   unsetWaitingFlag(): void {
-    const i32arr = new Int32Array(this.stdinBusBuffer);
+    const i32arr = new Int32Array(this.waitBuffer);
     Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Ready);
     Atomics.notify(i32arr, 0);
   }

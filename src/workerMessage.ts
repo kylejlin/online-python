@@ -8,6 +8,11 @@ export enum PyodideWorkerSignalCode {
   Ready = 1,
 }
 
+export enum InterruptSignalCode {
+  NoInterrupt = 0,
+  Sigint = 2,
+}
+
 export type MessageToPyodideWorker = RunMessage | SetSharedBuffersMessage;
 
 export interface RunMessage {
@@ -18,6 +23,7 @@ export interface RunMessage {
 export interface SetSharedBuffersMessage {
   readonly kind: MessageToPyodideWorkerKind.SetSharedBuffers;
   readonly stdinBusBuffer: SharedArrayBuffer;
+  readonly waitBuffer: SharedArrayBuffer;
   readonly interruptBuffer: SharedArrayBuffer;
 }
 
