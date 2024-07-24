@@ -13,3 +13,5 @@ The Pyodide release at `public/pyodide_0.26.1` exactly matches the official 0.26
 
 I removed the Python FLINT `.whl` file because it exceeded GitHub's file size limits.
 Then, I removed the `.whl.metadata` file, since it didn't make sense to keep it without the accompanying `.whl` file.
+
+This shouldn't affect you, unless for some reason you are expecting the Pyodide release to exactly match the official release.
