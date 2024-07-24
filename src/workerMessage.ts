@@ -1,6 +1,6 @@
 export enum MessageToPyodideWorkerKind {
   Run = "run",
-  SetSharedBuffer = "setSharedBuffer",
+  SetSharedBuffers = "setSharedBuffers",
 }
 
 export enum PyodideWorkerSignalCode {
@@ -8,16 +8,17 @@ export enum PyodideWorkerSignalCode {
   Ready = 1,
 }
 
-export type MessageToPyodideWorker = RunMessage | SetSharedBufferMessage;
+export type MessageToPyodideWorker = RunMessage | SetSharedBuffersMessage;
 
 export interface RunMessage {
   readonly kind: MessageToPyodideWorkerKind.Run;
   readonly code: string;
 }
 
-export interface SetSharedBufferMessage {
-  readonly kind: MessageToPyodideWorkerKind.SetSharedBuffer;
-  readonly sharedBuffer: SharedArrayBuffer;
+export interface SetSharedBuffersMessage {
+  readonly kind: MessageToPyodideWorkerKind.SetSharedBuffers;
+  readonly stdinBusBuffer: SharedArrayBuffer;
+  readonly interruptBuffer: SharedArrayBuffer;
 }
 
 export enum MessageFromPyodideWorkerKind {

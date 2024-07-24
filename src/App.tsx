@@ -36,6 +36,7 @@ export class App extends React.Component<AppProps, AppState> {
   stdin: string;
   visiblyDeletableStdin: string;
   stdinBusBuffer: SharedArrayBuffer;
+  interruptBuffer: SharedArrayBuffer;
   consoleInputRef: React.RefObject<HTMLInputElement>;
 
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
@@ -62,6 +63,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.visiblyDeletableStdin = "";
 
     this.stdinBusBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
+    this.interruptBuffer = new SharedArrayBuffer(4);
 
     this.consoleInputRef = React.createRef();
 
@@ -91,8 +93,9 @@ export class App extends React.Component<AppProps, AppState> {
     pyodideWorker.onmessage = this.handlePyodideWorkerMessage;
 
     this.typesafePostMessage({
-      kind: MessageToPyodideWorkerKind.SetSharedBuffer,
-      sharedBuffer: this.stdinBusBuffer,
+      kind: MessageToPyodideWorkerKind.SetSharedBuffers,
+      stdinBusBuffer: this.stdinBusBuffer,
+      interruptBuffer: this.interruptBuffer,
     });
   }
 
@@ -213,11 +216,21 @@ export class App extends React.Component<AppProps, AppState> {
   handleRunRequest(): void {
     this.stdin = "";
     this.visiblyDeletableStdin = "";
+    this.clearStdinBusBuffer();
+    this.interruptPyodideWorker();
     this.unsetWaitingFlag();
     this.typesafePostMessage({
       kind: MessageToPyodideWorkerKind.Run,
       code: this.state.editorValue,
     });
+  }
+
+  clearStdinBusBuffer(): void {
+    Atomics.store(new Uint32Array(this.stdinBusBuffer), 1, 0);
+  }
+
+  interruptPyodideWorker(): void {
+    Atomics.store(new Int32Array(this.interruptBuffer), 0, 2);
   }
 
   clearConsole(): void {

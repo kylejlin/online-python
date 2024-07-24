@@ -28,14 +28,27 @@ const pyodideProm: Promise<PyodideInterface> = new Promise(
 
 let stdin = "";
 
-let sharedBuffer: undefined | SharedArrayBuffer;
+let stdinBusBuffer: undefined | SharedArrayBuffer;
+
+let clearInterruptSignal: () => void = () => {};
+let checkInterruptSignal: () => void = () => {};
 
 self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
   const { data } = event;
 
-  if (data.kind === MessageToPyodideWorkerKind.SetSharedBuffer) {
-    pyodideProm.then(() => {
-      sharedBuffer = data.sharedBuffer;
+  if (data.kind === MessageToPyodideWorkerKind.SetSharedBuffers) {
+    pyodideProm.then((pyodide) => {
+      stdinBusBuffer = data.stdinBusBuffer;
+
+      const { interruptBuffer } = data;
+      pyodide.setInterruptBuffer(new Int32Array(interruptBuffer));
+      clearInterruptSignal = () => {
+        Atomics.store(new Int32Array(interruptBuffer), 0, 0);
+      };
+      checkInterruptSignal = () => {
+        pyodide.checkInterrupt();
+      };
+
       typesafePostMessage({ kind: MessageFromPyodideWorkerKind.WorkerReady });
     });
     return;
@@ -43,6 +56,9 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
 
   if (data.kind === MessageToPyodideWorkerKind.Run) {
     stdin = "";
+
+    clearInterruptSignal();
+
     pyodideProm.then((pyodide) => {
       try {
         pyodide.runPython(data.code);
@@ -97,8 +113,8 @@ loadPyodide().then((pyodide) => {
 }, rejectPyodideProm);
 
 function handleStdinRequest(): string {
-  if (sharedBuffer === undefined) {
-    throw new Error("Called handleStdinRequest before sharedBuffer was set.");
+  if (stdinBusBuffer === undefined) {
+    throw new Error("Called handleStdinRequest before stdinBusBuffer was set.");
   }
 
   while (true) {
@@ -110,55 +126,71 @@ function handleStdinRequest(): string {
       return line;
     }
 
-    const i32arr = new Int32Array(sharedBuffer);
+    const i32arr = new Int32Array(stdinBusBuffer);
     Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Waiting);
     typesafePostMessage({ kind: MessageFromPyodideWorkerKind.StdinRequest });
-    Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+    waitUntilStdinBusBufferIsReady();
 
-    const byteLength = new Uint32Array(sharedBuffer)[1];
-    const newInputBytes = new Uint8Array(sharedBuffer, 8, byteLength).slice();
-    Atomics.store(new Uint32Array(sharedBuffer), 1, 0);
+    const byteLength = new Uint32Array(stdinBusBuffer)[1];
+    const newInputBytes = new Uint8Array(stdinBusBuffer, 8, byteLength).slice();
+    Atomics.store(new Uint32Array(stdinBusBuffer), 1, 0);
     const newInputString = new TextDecoder().decode(newInputBytes);
     stdin += newInputString;
   }
 }
 
 function handleStdoutRequest(output: Uint8Array): number {
-  if (sharedBuffer === undefined) {
-    throw new Error("Called handleStdoutRequest before sharedBuffer was set.");
+  if (stdinBusBuffer === undefined) {
+    throw new Error(
+      "Called handleStdoutRequest before stdinBusBuffer was set."
+    );
   }
 
   const outputLength = output.length;
 
-  const i32arr = new Int32Array(sharedBuffer);
+  const i32arr = new Int32Array(stdinBusBuffer);
   Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Waiting);
   typesafePostMessage({
     kind: MessageFromPyodideWorkerKind.StdoutUpdate,
     output,
   });
-  Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+  waitUntilStdinBusBufferIsReady();
 
   return outputLength;
 }
 
 function handleStderrRequest(output: Uint8Array): number {
-  if (sharedBuffer === undefined) {
-    throw new Error("Called handleStderrRequest before sharedBuffer was set.");
+  if (stdinBusBuffer === undefined) {
+    throw new Error(
+      "Called handleStderrRequest before stdinBusBuffer was set."
+    );
   }
 
   const outputLength = output.length;
 
-  const i32arr = new Int32Array(sharedBuffer);
+  const i32arr = new Int32Array(stdinBusBuffer);
   Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Waiting);
   typesafePostMessage({
     kind: MessageFromPyodideWorkerKind.StderrUpdate,
     output,
   });
-  Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+  waitUntilStdinBusBufferIsReady();
 
   return outputLength;
 }
 
 function typesafePostMessage(message: MessageFromPyodideWorker): void {
   self.postMessage(message);
+}
+
+function waitUntilStdinBusBufferIsReady(): void {
+  if (stdinBusBuffer === undefined) {
+    throw new Error(
+      "Called waitUntilMainThreadUnsetsWaitingFlag before stdinBusBuffer was set."
+    );
+  }
+
+  const i32arr = new Int32Array(stdinBusBuffer);
+  Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+  checkInterruptSignal();
 }
