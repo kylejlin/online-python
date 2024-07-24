@@ -42,6 +42,7 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
   }
 
   if (data.kind === MessageToPyodideWorkerKind.Run) {
+    stdin = "";
     pyodideProm.then((pyodide) => {
       try {
         pyodide.runPython(data.code);
