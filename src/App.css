@@ -68,12 +68,9 @@
   white-space: pre;
 }
 
-.ConsoleText--stdin {
-  color: var(--green);
-}
-
-.ConsoleText--stderr {
-  color: var(--red);
+.ConsoleText--compositionText {
+  background-color: black;
+  color: white;
 }
 
 .Button {
@@ -107,14 +104,34 @@
 
 .ConsoleInput {
   outline: none;
+  opacity: 0;
+  caret-color: transparent;
+}
+
+.ConsoleCursor {
+  background-color: black;
+  border: 1px solid black;
+  color: transparent;
+
+  user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -o-user-select: none;
+}
+
+.ConsoleCursor--focused {
+  background-color: black;
+}
+
+.ConsoleCursor--unfocused {
+  background-color: transparent;
+}
+
+.todo_delete {
+  outline: none;
   border-radius: 0;
   border: 1px solid black;
   width: min-content;
   min-height: 12px;
-}
-
-.ConsoleInput:focus {
-  background-color: black;
-  color: white;
-  caret-color: transparent;
 }

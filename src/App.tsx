@@ -26,7 +26,8 @@ interface AppState {
   readonly isPyodideWorkerReady: boolean;
   readonly editorValue: string;
   readonly consoleText: string;
-  readonly consoleInputValue: string;
+  readonly inputCompositionValue: string;
+  readonly isConsoleInputFocused: boolean;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -35,6 +36,7 @@ export class App extends React.Component<AppProps, AppState> {
   stdin: string;
   visiblyDeletableStdin: string;
   sharedBuffer: SharedArrayBuffer;
+  consoleInputRef: React.RefObject<HTMLInputElement>;
 
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
   terminatePyodideWorker: () => void;
@@ -48,7 +50,8 @@ export class App extends React.Component<AppProps, AppState> {
       isPyodideWorkerReady: false,
       editorValue: DEFAULT_EDITOR_VALUE,
       consoleText: "",
-      consoleInputValue: "",
+      inputCompositionValue: "",
+      isConsoleInputFocused: false,
     };
 
     this.manualIsMounted = false;
@@ -59,6 +62,8 @@ export class App extends React.Component<AppProps, AppState> {
     this.visiblyDeletableStdin = "";
 
     this.sharedBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
+
+    this.consoleInputRef = React.createRef();
 
     this.typesafePostMessage = (): void => {
       throw new Error(
@@ -106,9 +111,13 @@ export class App extends React.Component<AppProps, AppState> {
     this.handleConsoleInputCompositionEnd =
       this.handleConsoleInputCompositionEnd.bind(this);
     this.handleConsoleInputKeydown = this.handleConsoleInputKeydown.bind(this);
+    this.handleConsoleInputFocus = this.handleConsoleInputFocus.bind(this);
+    this.handleConsoleInputBlur = this.handleConsoleInputBlur.bind(this);
     this.handlePyodideWorkerMessage =
       this.handlePyodideWorkerMessage.bind(this);
     this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
+    this.focusConsoleInputIfPossible =
+      this.focusConsoleInputIfPossible.bind(this);
   }
 
   render() {
@@ -138,18 +147,38 @@ export class App extends React.Component<AppProps, AppState> {
             />
           </div>
 
-          <div className="ConsoleContainer">
+          <div
+            className="ConsoleContainer"
+            onClick={this.focusConsoleInputIfPossible}
+          >
             <div className="Console">
-              <span className={"ConsoleText"}>{this.state.consoleText}</span>
+              <span className="ConsoleText">{this.state.consoleText}</span>
+              {this.isComposingInput && (
+                <span className="ConsoleText ConsoleText--compositionText">
+                  {this.state.inputCompositionValue}
+                </span>
+              )}
+              <span
+                className={
+                  "ConsoleCursor" +
+                  (this.state.isConsoleInputFocused
+                    ? " ConsoleCursor--focused"
+                    : " ConsoleCursor--unfocused")
+                }
+              >
+                M
+              </span>
 
               <input
                 className="ConsoleInput"
-                size={Math.max(1, this.state.consoleInputValue.length)}
-                value={this.state.consoleInputValue}
+                value={this.state.inputCompositionValue}
                 onChange={this.handleConsoleInputChange}
                 onCompositionStart={this.handleConsoleInputCompositionStart}
                 onCompositionEnd={this.handleConsoleInputCompositionEnd}
                 onKeyDown={this.handleConsoleInputKeydown}
+                onFocus={this.handleConsoleInputFocus}
+                onBlur={this.handleConsoleInputBlur}
+                ref={this.consoleInputRef}
               />
             </div>
           </div>
@@ -184,7 +213,7 @@ export class App extends React.Component<AppProps, AppState> {
     if (this.isComposingInput) {
       this.setState((prevState) => ({
         ...prevState,
-        consoleInputValue: inputValue,
+        inputCompositionValue: inputValue,
       }));
       return;
     }
@@ -196,7 +225,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState((prevState) => ({
       ...prevState,
       consoleText: prevState.consoleText + inputValue,
-      consoleInputValue: "",
+      inputCompositionValue: "",
     }));
   }
 
@@ -272,7 +301,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState((prevState) => ({
       ...prevState,
       consoleText: prevState.consoleText + composedData,
-      consoleInputValue: "",
+      inputCompositionValue: "",
     }));
   }
 
@@ -286,7 +315,6 @@ export class App extends React.Component<AppProps, AppState> {
       this.setState((prevState) => ({
         ...prevState,
         consoleText: prevState.consoleText + "\n",
-        consoleInputValue: "",
       }));
       return;
     }
@@ -318,6 +346,14 @@ export class App extends React.Component<AppProps, AppState> {
       }));
       return;
     }
+  }
+
+  handleConsoleInputFocus(): void {
+    this.setState({ isConsoleInputFocused: true });
+  }
+
+  handleConsoleInputBlur(): void {
+    this.setState({ isConsoleInputFocused: false });
   }
 
   transferStdinToSharedBufferIfWaitingFlagIsSet(): void {
@@ -354,6 +390,14 @@ export class App extends React.Component<AppProps, AppState> {
     const i32arr = new Int32Array(this.sharedBuffer);
     Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Ready);
     Atomics.notify(i32arr, 0);
+  }
+
+  focusConsoleInputIfPossible(): void {
+    const input = this.consoleInputRef.current;
+    if (input === null) {
+      return;
+    }
+    input.focus();
   }
 }
 
