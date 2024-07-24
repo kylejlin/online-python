@@ -150,7 +150,6 @@ function handleStdinRequest(): string {
     if (indexOfFirstNewline !== -1) {
       const line = stdin.slice(0, indexOfFirstNewline + 1);
       stdin = stdin.slice(indexOfFirstNewline + 1);
-      console.log("returning stdin", line);
       return line;
     }
 
