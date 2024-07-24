@@ -260,13 +260,26 @@ export class App extends React.Component<AppProps, AppState> {
   handleConsoleInputKeydown(
     event: React.KeyboardEvent<HTMLInputElement>
   ): void {
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && !this.isComposingInput) {
       this.stdin += "\n";
       this.transferStdinToSharedBufferIfWaitingFlagIsSet();
       this.setState((prevState) => ({
         ...prevState,
         consoleText: prevState.consoleText + "\n",
         consoleInputValue: "",
+      }));
+      return;
+    }
+
+    if (
+      event.key === "Backspace" &&
+      !this.isComposingInput &&
+      getLastLine(this.stdin).length > 0
+    ) {
+      this.stdin = withoutLastCharacter(this.stdin);
+      this.setState((prevState) => ({
+        ...prevState,
+        consoleText: withoutLastCharacter(prevState.consoleText),
       }));
     }
   }
@@ -305,4 +318,26 @@ export class App extends React.Component<AppProps, AppState> {
     Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Ready);
     Atomics.notify(i32arr, 0);
   }
+}
+
+function getLastLine(text: string): string {
+  const lastIndexOfNewline = text.lastIndexOf("\n");
+  if (lastIndexOfNewline === -1) {
+    return text;
+  }
+
+  return text.slice(lastIndexOfNewline + 1);
+}
+
+function withoutLastCharacter(text: string): string {
+  return text.replace(
+    // I transpiled the modern regex `/.$/u` into an
+    // "old-fashioned" regex (i.e., regex without Unicode flag support).
+    // I used https://mothereff.in/regexpu for transpilation.
+    // Below is the result:
+
+    // eslint-disable-next-line no-control-regex
+    /(?:[\0-\t\x0B\f\x0E-\u2027\u202A-\uD7FF\uE000-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF])$/,
+    ""
+  );
 }
