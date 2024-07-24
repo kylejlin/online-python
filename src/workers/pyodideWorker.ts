@@ -106,6 +106,7 @@ function handleStdinRequest(): string {
     if (indexOfFirstNewline !== -1) {
       const line = stdin.slice(0, indexOfFirstNewline + 1);
       stdin = stdin.slice(indexOfFirstNewline + 1);
+      console.log("returning stdin", line);
       return line;
     }
 
@@ -115,8 +116,9 @@ function handleStdinRequest(): string {
     Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
 
     const byteLength = new Uint32Array(sharedBuffer)[1];
-    const newInputBytes = new Uint8Array(sharedBuffer, 8, byteLength);
-    const newInputString = new TextDecoder().decode(newInputBytes.slice());
+    const newInputBytes = new Uint8Array(sharedBuffer, 8, byteLength).slice();
+    Atomics.store(new Uint32Array(sharedBuffer), 1, 0);
+    const newInputString = new TextDecoder().decode(newInputBytes);
     stdin += newInputString;
   }
 }

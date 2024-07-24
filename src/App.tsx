@@ -35,7 +35,7 @@ export class App extends React.Component<AppProps, AppState> {
   isComposingInput: boolean;
   stdin: string;
   visiblyDeletableStdin: string;
-  sharedBuffer: SharedArrayBuffer;
+  stdinBusBuffer: SharedArrayBuffer;
   consoleInputRef: React.RefObject<HTMLInputElement>;
 
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
@@ -61,7 +61,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.stdin = "";
     this.visiblyDeletableStdin = "";
 
-    this.sharedBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
+    this.stdinBusBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
 
     this.consoleInputRef = React.createRef();
 
@@ -92,7 +92,7 @@ export class App extends React.Component<AppProps, AppState> {
 
     this.typesafePostMessage({
       kind: MessageToPyodideWorkerKind.SetSharedBuffer,
-      sharedBuffer: this.sharedBuffer,
+      sharedBuffer: this.stdinBusBuffer,
     });
   }
 
@@ -375,37 +375,40 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   transferStdinToSharedBufferIfWaitingFlagIsSet(): void {
-    const i32arr = new Int32Array(this.sharedBuffer);
+    const i32arr = new Int32Array(this.stdinBusBuffer);
     if (Atomics.load(i32arr, 0) !== PyodideWorkerSignalCode.Waiting) {
       return;
     }
+
+    // Since the other worker thread is waiting, we don't need to worry about
+    // race conditions.
+    // Thus, we can forgo the use of Atomics (except for unsetting the waiting flag).
 
     const lastIndexOfNewline = this.stdin.lastIndexOf("\n");
     if (lastIndexOfNewline === -1) {
       return;
     }
 
+    const existingBusContentByteLength = new Uint32Array(
+      this.stdinBusBuffer
+    )[1];
+
     const transferrable = this.stdin.slice(0, lastIndexOfNewline + 1);
     const transferrableBytes = new TextEncoder().encode(transferrable);
     this.stdin = this.stdin.slice(lastIndexOfNewline + 1);
     this.visiblyDeletableStdin = getLastLine(this.stdin);
 
-    Atomics.store(
-      new Uint32Array(this.sharedBuffer),
-      1,
-      transferrableBytes.length
+    new Uint32Array(this.stdinBusBuffer)[1] =
+      existingBusContentByteLength + transferrableBytes.byteLength;
+    new Uint8Array(this.stdinBusBuffer, 8 + existingBusContentByteLength).set(
+      transferrableBytes
     );
-    const stdinBytesView = new Uint8Array(this.sharedBuffer, 8);
-    for (let i = 0; i < transferrableBytes.length; ++i) {
-      const byte = transferrableBytes[i];
-      Atomics.store(stdinBytesView, i, byte);
-    }
 
     this.unsetWaitingFlag();
   }
 
   unsetWaitingFlag(): void {
-    const i32arr = new Int32Array(this.sharedBuffer);
+    const i32arr = new Int32Array(this.stdinBusBuffer);
     Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Ready);
     Atomics.notify(i32arr, 0);
   }
