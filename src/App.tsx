@@ -124,18 +124,24 @@ export class App extends React.Component<AppProps, AppState> {
     return (
       <div className="App">
         <header className="Header">
-          {this.state.isPyodideWorkerReady ? (
-            <button
-              className="Button SmallSideMargin"
-              onClick={this.handleRunRequest}
-            >
-              Run
+          <div className="HeaderItem SmallLeftMargin">
+            {this.state.isPyodideWorkerReady ? (
+              <button
+                className="Button Button--green"
+                onClick={this.handleRunRequest}
+              >
+                Run
+              </button>
+            ) : (
+              <div className="PyodideLoadingNotification">Loading...</div>
+            )}
+          </div>
+
+          <div className="HeaderItem SmallLeftMargin">
+            <button className="Button" onClick={this.handleRunRequest}>
+              Clear Console
             </button>
-          ) : (
-            <div className="PyodideLoadingNotification SmallSideMargin">
-              Loading...
-            </div>
-          )}
+          </div>
         </header>
 
         <main className="Main">

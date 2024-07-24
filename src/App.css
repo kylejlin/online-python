@@ -19,12 +19,18 @@
   height: var(--header-height);
 
   display: flex;
-  justify-content: center;
-  align-content: left;
-  flex-direction: column;
+  flex-direction: row;
 
   user-select: none;
   -webkit-user-select: none;
+}
+
+.HeaderItem {
+  display: flex;
+  justify-content: center;
+  align-content: left;
+  flex-direction: column;
+  height: 100%;
 }
 
 .PyodideLoadingNotification {
@@ -75,9 +81,10 @@
 
 .Button {
   color: white;
-  background-color: var(--green);
+  background-color: var(--blue);
   font-size: 12px;
   font-weight: bold;
+  white-space: nowrap;
 
   border: none;
   border-radius: 4px;
@@ -89,6 +96,10 @@
   width: min-content;
 }
 
+.Button--green {
+  background-color: var(--green);
+}
+
 .Button:hover {
   filter: contrast(0.8) brightness(1.2);
 }
@@ -97,9 +108,8 @@
   cursor: not-allowed;
 }
 
-.SmallSideMargin {
+.SmallLeftMargin {
   margin-left: 8px;
-  margin-right: 8px;
 }
 
 .ConsoleInput {
