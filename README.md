@@ -1,6 +1,6 @@
 # Koja
 
-A simple online Python playground.
+A simple online Python playground. [Try it now!](https://onlinepython.github.io/)
 
 ## Developing
 
