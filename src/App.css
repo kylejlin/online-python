@@ -120,6 +120,8 @@
   outline: none;
   opacity: 0;
   caret-color: transparent;
+  line-height: 1px;
+  font-size: 1px;
 }
 
 .ConsoleCursor {
