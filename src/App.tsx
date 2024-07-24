@@ -105,6 +105,7 @@ export class App extends React.Component<AppProps, AppState> {
   bindMethods(): void {
     this.handleEditorChange = this.handleEditorChange.bind(this);
     this.handleRunRequest = this.handleRunRequest.bind(this);
+    this.clearConsole = this.clearConsole.bind(this);
     this.handleConsoleInputChange = this.handleConsoleInputChange.bind(this);
     this.handleConsoleInputCompositionStart =
       this.handleConsoleInputCompositionStart.bind(this);
@@ -138,7 +139,7 @@ export class App extends React.Component<AppProps, AppState> {
           </div>
 
           <div className="HeaderItem SmallLeftMargin">
-            <button className="Button" onClick={this.handleRunRequest}>
+            <button className="Button" onClick={this.clearConsole}>
               Clear Console
             </button>
           </div>
@@ -211,6 +212,10 @@ export class App extends React.Component<AppProps, AppState> {
       kind: MessageToPyodideWorkerKind.Run,
       code: this.state.editorValue,
     });
+  }
+
+  clearConsole(): void {
+    this.setState({ consoleText: "" });
   }
 
   handleConsoleInputChange(event: React.ChangeEvent<HTMLInputElement>): void {
