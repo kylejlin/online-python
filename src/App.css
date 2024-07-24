@@ -101,6 +101,10 @@
   background-color: var(--green);
 }
 
+.Button--red {
+  background-color: var(--red);
+}
+
 .Button:hover {
   filter: contrast(0.8) brightness(1.2);
 }

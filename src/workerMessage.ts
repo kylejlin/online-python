@@ -29,7 +29,8 @@ export interface SetSharedBuffersMessage {
 
 export enum MessageFromPyodideWorkerKind {
   WorkerReady = "workerReady",
-  Error = "error",
+  ExecutionSucceeded = "executionSucceeded",
+  ExecutionError = "executionError",
   StdinRequest = "stdinRequest",
   StdoutUpdate = "stdoutUpdate",
   StderrUpdate = "stderrUpdate",
@@ -37,6 +38,7 @@ export enum MessageFromPyodideWorkerKind {
 
 export type MessageFromPyodideWorker =
   | WorkerReadyMessage
+  | ExecutionSucceededMessage
   | ExecutionErrorMessage
   | StdinRequestMessage
   | StdoutUpdateMessage
@@ -46,8 +48,12 @@ export interface WorkerReadyMessage {
   readonly kind: MessageFromPyodideWorkerKind.WorkerReady;
 }
 
+export interface ExecutionSucceededMessage {
+  readonly kind: MessageFromPyodideWorkerKind.ExecutionSucceeded;
+}
+
 export interface ExecutionErrorMessage {
-  readonly kind: MessageFromPyodideWorkerKind.Error;
+  readonly kind: MessageFromPyodideWorkerKind.ExecutionError;
   readonly errorString: string;
 }
 

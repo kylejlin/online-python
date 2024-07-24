@@ -29,6 +29,7 @@ interface AppState {
   readonly consoleText: string;
   readonly inputCompositionValue: string;
   readonly isConsoleInputFocused: boolean;
+  readonly isRunningCode: boolean;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -55,6 +56,7 @@ export class App extends React.Component<AppProps, AppState> {
       consoleText: "",
       inputCompositionValue: "",
       isConsoleInputFocused: false,
+      isRunningCode: false,
     };
 
     this.manualIsMounted = false;
@@ -112,6 +114,7 @@ export class App extends React.Component<AppProps, AppState> {
   bindMethods(): void {
     this.handleEditorChange = this.handleEditorChange.bind(this);
     this.handleRunRequest = this.handleRunRequest.bind(this);
+    this.handleInterruptRequest = this.handleInterruptRequest.bind(this);
     this.clearConsole = this.clearConsole.bind(this);
     this.handleConsoleInputChange = this.handleConsoleInputChange.bind(this);
     this.handleConsoleInputCompositionStart =
@@ -135,12 +138,21 @@ export class App extends React.Component<AppProps, AppState> {
         <header className="Header">
           <div className="HeaderItem SmallLeftMargin">
             {this.state.isPyodideWorkerReady ? (
-              <button
-                className="Button Button--green"
-                onClick={this.handleRunRequest}
-              >
-                Run
-              </button>
+              this.state.isRunningCode ? (
+                <button
+                  className="Button Button--red"
+                  onClick={this.handleInterruptRequest}
+                >
+                  Stop
+                </button>
+              ) : (
+                <button
+                  className="Button Button--green"
+                  onClick={this.handleRunRequest}
+                >
+                  Run
+                </button>
+              )
             ) : (
               <div className="PyodideLoadingNotification">Loading...</div>
             )}
@@ -218,15 +230,21 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleRunRequest(): void {
-    this.stdin = "";
-    this.visiblyDeletableStdin = "";
-    this.clearStdinBusBuffer();
-    this.interruptPyodideWorker();
-    this.unsetWaitingFlag();
-    this.typesafePostMessage({
-      kind: MessageToPyodideWorkerKind.Run,
-      code: this.state.editorValue,
+    this.setState({ isRunningCode: true }, () => {
+      this.stdin = "";
+      this.visiblyDeletableStdin = "";
+      this.clearStdinBusBuffer();
+      this.interruptPyodideWorker();
+      this.typesafePostMessage({
+        kind: MessageToPyodideWorkerKind.Run,
+        code: this.state.editorValue,
+      });
     });
+  }
+
+  handleInterruptRequest(): void {
+    this.interruptPyodideWorker();
+    this.setState({ isRunningCode: false });
   }
 
   clearStdinBusBuffer(): void {
@@ -239,6 +257,7 @@ export class App extends React.Component<AppProps, AppState> {
       0,
       InterruptSignalCode.Sigint
     );
+    this.unsetWaitingFlag();
   }
 
   clearConsole(): void {
@@ -279,8 +298,14 @@ export class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    if (data.kind === MessageFromPyodideWorkerKind.Error) {
+    if (data.kind === MessageFromPyodideWorkerKind.ExecutionSucceeded) {
+      this.setState({ isRunningCode: false });
+      return;
+    }
+
+    if (data.kind === MessageFromPyodideWorkerKind.ExecutionError) {
       if (data.errorString.length === 0) {
+        this.setState({ isRunningCode: false });
         return;
       }
 
@@ -288,6 +313,7 @@ export class App extends React.Component<AppProps, AppState> {
       this.setState((prevState) => ({
         ...prevState,
         consoleText: prevState.consoleText + data.errorString,
+        isRunningCode: false,
       }));
       return;
     }

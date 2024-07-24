@@ -87,9 +87,12 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
     pyodideProm.then((pyodide) => {
       try {
         pyodide.runPython(data.code);
+        typesafePostMessage({
+          kind: MessageFromPyodideWorkerKind.ExecutionSucceeded,
+        });
       } catch (error) {
         typesafePostMessage({
-          kind: MessageFromPyodideWorkerKind.Error,
+          kind: MessageFromPyodideWorkerKind.ExecutionError,
           errorString: String(error),
         });
       }
