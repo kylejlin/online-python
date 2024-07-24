@@ -74,6 +74,9 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
         pyodide.checkInterrupt();
       };
 
+      pyodide.registerJsModule("js", {});
+      pyodide.registerJsModule("pyodide_js", {});
+
       typesafePostMessage({ kind: MessageFromPyodideWorkerKind.WorkerReady });
     });
     return;
