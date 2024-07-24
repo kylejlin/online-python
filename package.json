@@ -28,7 +28,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -b gh-pages -d build"
+    "deploy": "gh-pages --repo https://github.com/onlinepython/onlinepython.github.io.git -b main -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -48,5 +48,5 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "https://kylejlin.github.io/koja"
+  "homepage": "https://onlinepython.github.io"
 }
