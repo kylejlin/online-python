@@ -18,4 +18,4 @@ root.render(
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
 
-console.log("Koja v1.0.0");
+console.log("Koja v1.0.1");
