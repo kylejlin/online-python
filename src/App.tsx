@@ -1,9 +1,15 @@
 import React from "react";
 import "./App.css";
-import { Editor, loader } from "@monaco-editor/react";
-import { pyodideProm, PyodideInterface } from "./pyodide";
+import { Editor, loader as monacoLoader } from "@monaco-editor/react";
+import {
+  MessageFromPyodideWorker,
+  MessageFromPyodideWorkerKind,
+  MessageToPyodideWorker,
+  MessageToPyodideWorkerKind,
+  PyodideWorkerSignalCode,
+} from "./workerMessage";
 
-loader.config({
+monacoLoader.config({
   paths: {
     vs: process.env.PUBLIC_URL + "/monaco_support_0.46.0/min/vs",
   },
@@ -12,80 +18,102 @@ loader.config({
 const DEFAULT_EDITOR_VALUE =
   'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\nprint("Done")';
 
+const STDIN_BUFFER_SIZE = 400_000;
+
 interface AppProps {}
 
 interface AppState {
-  readonly hasPyodideLoaded: boolean;
+  readonly isPyodideWorkerReady: boolean;
   readonly editorValue: string;
-  readonly consoleEntries: readonly ConsoleEntry[];
-}
-
-type ConsoleEntryKind = "input" | "output" | "error";
-
-interface ConsoleEntry {
-  readonly kind: ConsoleEntryKind;
-  readonly value: string;
+  readonly consoleText: string;
+  readonly consoleInputValue: string;
 }
 
 export class App extends React.Component<AppProps, AppState> {
-  pyodide: undefined | PyodideInterface;
-  pyodideWorker: undefined | Worker;
+  manualIsMounted: boolean;
+  isComposingInput: boolean;
+  stdin: string;
+  sharedBuffer: SharedArrayBuffer;
 
-  synchronousConsoleEntries: ConsoleEntry[];
+  typesafePostMessage: (message: MessageToPyodideWorker) => void;
+  terminatePyodideWorker: () => void;
 
   constructor(props: AppProps) {
     super(props);
 
+    this.bindMethods();
+
     this.state = {
-      hasPyodideLoaded: false,
+      isPyodideWorkerReady: false,
       editorValue: DEFAULT_EDITOR_VALUE,
-      consoleEntries: [],
+      consoleText: "",
+      consoleInputValue: "",
     };
 
-    this.synchronousConsoleEntries = [];
+    this.manualIsMounted = false;
 
-    this.bindMethods();
+    this.isComposingInput = false;
+
+    this.stdin = "";
+
+    this.sharedBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
+
+    this.typesafePostMessage = (): void => {
+      throw new Error(
+        "typesafePostMessage was called before it was initialized."
+      );
+    };
+
+    this.terminatePyodideWorker = (): void => {};
   }
 
   componentDidMount(): void {
-    pyodideProm.then((pyodide) => {
-      pyodide.setStdin({ stdin: this.handleStdinRequest });
-      pyodide.setStdout({ write: this.handleStdoutRequest });
-      pyodide.setStderr({ write: this.handleStderrRequest });
-
-      this.pyodide = pyodide;
-
-      this.setState({
-        hasPyodideLoaded: true,
-      });
-    });
+    this.manualIsMounted = true;
 
     const pyodideWorker = new Worker(
       new URL("./workers/pyodideWorker.ts", import.meta.url)
     );
-    pyodideWorker.onmessage = (event) => {
-      console.log("worker response received", event.data);
+
+    this.typesafePostMessage = (message: MessageToPyodideWorker): void => {
+      pyodideWorker.postMessage(message);
     };
-    this.pyodideWorker = pyodideWorker;
+    this.terminatePyodideWorker = (): void => {
+      pyodideWorker.terminate();
+    };
+
+    pyodideWorker.onmessage = this.handlePyodideWorkerMessage;
+
+    this.typesafePostMessage({
+      kind: MessageToPyodideWorkerKind.SetSharedBuffer,
+      sharedBuffer: this.sharedBuffer,
+    });
   }
 
   componentWillUnmount(): void {
-    this.pyodideWorker?.terminate();
+    this.terminatePyodideWorker();
+
+    this.manualIsMounted = false;
   }
 
   bindMethods(): void {
     this.handleEditorChange = this.handleEditorChange.bind(this);
     this.handleRunRequest = this.handleRunRequest.bind(this);
-    this.handleStdinRequest = this.handleStdinRequest.bind(this);
-    this.handleStdoutRequest = this.handleStdoutRequest.bind(this);
-    this.handleStderrRequest = this.handleStderrRequest.bind(this);
+    this.handleConsoleInputChange = this.handleConsoleInputChange.bind(this);
+    this.handleConsoleInputCompositionStart =
+      this.handleConsoleInputCompositionStart.bind(this);
+    this.handleConsoleInputCompositionEnd =
+      this.handleConsoleInputCompositionEnd.bind(this);
+    this.handleConsoleInputKeydown = this.handleConsoleInputKeydown.bind(this);
+    this.handlePyodideWorkerMessage =
+      this.handlePyodideWorkerMessage.bind(this);
+    this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
   }
 
   render() {
     return (
       <div className="App">
         <header className="Header">
-          {this.state.hasPyodideLoaded ? (
+          {this.state.isPyodideWorkerReady ? (
             <button
               className="Button SmallSideMargin"
               onClick={this.handleRunRequest}
@@ -110,21 +138,17 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="ConsoleContainer">
             <div className="Console">
-              {this.state.consoleEntries.map((segment, index) => (
-                <span
-                  className={
-                    "ConsoleText" +
-                    (segment.kind === "input"
-                      ? " ConsoleText--stdin"
-                      : segment.kind === "error"
-                      ? " ConsoleText--stderr"
-                      : " ConsoleText--stdout")
-                  }
-                  key={index}
-                >
-                  {segment.value}
-                </span>
-              ))}
+              <span className={"ConsoleText"}>{this.state.consoleText}</span>
+
+              <input
+                className="ConsoleInput"
+                size={Math.max(1, this.state.consoleInputValue.length)}
+                value={this.state.consoleInputValue}
+                onChange={this.handleConsoleInputChange}
+                onCompositionStart={this.handleConsoleInputCompositionStart}
+                onCompositionEnd={this.handleConsoleInputCompositionEnd}
+                onKeyDown={this.handleConsoleInputKeydown}
+              />
             </div>
           </div>
         </main>
@@ -143,65 +167,132 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleRunRequest(): void {
-    if (this.pyodideWorker !== undefined) {
-      this.pyodideWorker.postMessage({
-        kind: "run",
-        code: this.state.editorValue,
-      });
-    }
-
-    this.synchronousConsoleEntries = [];
-    this.setState({ consoleEntries: [] }, () => {
-      try {
-        this.pyodide!.runPython(this.state.editorValue);
-      } catch (error) {
-        this.setState((prevState) => ({
-          ...prevState,
-          consoleEntries: prevState.consoleEntries.concat([
-            { kind: "error", value: String(error) },
-          ]),
-        }));
-      }
+    this.stdin = "";
+    this.unsetWaitingFlag();
+    this.typesafePostMessage({
+      kind: MessageToPyodideWorkerKind.Run,
+      code: this.state.editorValue,
     });
   }
 
-  handleStdinRequest(): string {
-    const fullConsoleText = this.synchronousConsoleEntries
-      .map((segment) => segment.value)
-      .join("");
-    const promptMessage = fullConsoleText.slice(
-      fullConsoleText.lastIndexOf("\n") + 1
-    );
-    const raw = window.prompt(promptMessage) ?? "";
-    const normalized = raw.endsWith("\n") ? raw : raw + "\n";
-    const entry: ConsoleEntry = { kind: "input", value: normalized };
+  handleConsoleInputChange(event: React.ChangeEvent<HTMLInputElement>): void {
+    const inputValue = event.target.value;
+
+    if (this.isComposingInput) {
+      this.setState((prevState) => ({
+        ...prevState,
+        consoleInputValue: inputValue,
+      }));
+      return;
+    }
+
+    this.stdin += inputValue;
     this.setState((prevState) => ({
       ...prevState,
-      consoleEntries: prevState.consoleEntries.concat([entry]),
+      consoleText: prevState.consoleText + inputValue,
+      consoleInputValue: "",
     }));
-    this.synchronousConsoleEntries.push(entry);
-    return normalized;
   }
 
-  handleStdoutRequest(output: Uint8Array): number {
-    const text = new TextDecoder().decode(output);
-    const entry: ConsoleEntry = { kind: "output", value: text };
-    this.setState((prevState) => ({
-      ...prevState,
-      consoleEntries: prevState.consoleEntries.concat([entry]),
-    }));
-    this.synchronousConsoleEntries.push(entry);
-    return output.length;
+  handlePyodideWorkerMessage(
+    event: MessageEvent<MessageFromPyodideWorker>
+  ): void {
+    const { data } = event;
+
+    if (data.kind === MessageFromPyodideWorkerKind.WorkerReady) {
+      this.setState({
+        isPyodideWorkerReady: true,
+      });
+      return;
+    }
+
+    if (data.kind === MessageFromPyodideWorkerKind.Error) {
+      this.setState((prevState) => ({
+        ...prevState,
+        consoleText: prevState.consoleText + data.errorString,
+      }));
+      return;
+    }
+
+    if (data.kind === MessageFromPyodideWorkerKind.StdinRequest) {
+      this.transferStdinToSharedBufferIfWaitingFlagIsSet();
+      return;
+    }
+
+    if (
+      data.kind === MessageFromPyodideWorkerKind.StdoutUpdate ||
+      data.kind === MessageFromPyodideWorkerKind.StderrUpdate
+    ) {
+      this.setState(
+        (prevState) => ({
+          ...prevState,
+          consoleText:
+            prevState.consoleText + new TextDecoder().decode(data.output),
+        }),
+        this.unsetWaitingFlag
+      );
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _exhaustivenessCheck: never = data;
   }
 
-  handleStderrRequest(output: Uint8Array): number {
-    const text = new TextDecoder().decode(output);
-    const entry: ConsoleEntry = { kind: "error", value: text };
+  handleConsoleInputCompositionStart(): void {
+    this.isComposingInput = true;
+  }
+
+  handleConsoleInputCompositionEnd(
+    event: React.CompositionEvent<HTMLInputElement>
+  ): void {
+    const composedData = event.data;
+
+    this.isComposingInput = false;
+
+    this.stdin += composedData;
     this.setState((prevState) => ({
       ...prevState,
-      consoleEntries: prevState.consoleEntries.concat([entry]),
+      consoleText: prevState.consoleText + composedData,
+      consoleInputValue: "",
     }));
-    this.synchronousConsoleEntries.push(entry);
-    return output.length;
+  }
+
+  handleConsoleInputKeydown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ): void {
+    if (event.key === "Enter") {
+      this.stdin += "\n";
+      this.transferStdinToSharedBufferIfWaitingFlagIsSet();
+      this.setState((prevState) => ({
+        ...prevState,
+        consoleText: prevState.consoleText + "\n",
+        consoleInputValue: "",
+      }));
+    }
+  }
+
+  transferStdinToSharedBufferIfWaitingFlagIsSet(): void {
+    const i32arr = new Int32Array(this.sharedBuffer);
+    if (Atomics.load(i32arr, 0) !== PyodideWorkerSignalCode.Waiting) {
+      return;
+    }
+
+    const stdinBytes = new TextEncoder().encode(this.stdin);
+    this.stdin = "";
+
+    Atomics.store(new Uint32Array(this.sharedBuffer), 1, stdinBytes.length);
+    const stdinBytesView = new Uint8Array(this.sharedBuffer, 8);
+    for (let i = 0; i < stdinBytes.length; ++i) {
+      const byte = stdinBytes[i];
+      Atomics.store(stdinBytesView, i, byte);
+    }
+
+    this.unsetWaitingFlag();
+  }
+
+  unsetWaitingFlag(): void {
+    const i32arr = new Int32Array(this.sharedBuffer);
+    Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Ready);
+    Atomics.notify(i32arr, 0);
   }
 }

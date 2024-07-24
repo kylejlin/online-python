@@ -104,3 +104,17 @@
   margin-left: 8px;
   margin-right: 8px;
 }
+
+.ConsoleInput {
+  outline: none;
+  border-radius: 0;
+  border: 1px solid black;
+  width: min-content;
+  min-height: 12px;
+}
+
+.ConsoleInput:focus {
+  background-color: black;
+  color: white;
+  caret-color: transparent;
+}

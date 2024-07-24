@@ -1,6 +1,63 @@
 import type { PyodideInterface } from "pyodide";
+import {
+  MessageFromPyodideWorker,
+  MessageFromPyodideWorkerKind,
+  MessageToPyodideWorker,
+  MessageToPyodideWorkerKind,
+  PyodideWorkerSignalCode,
+} from "../workerMessage";
+
+export {};
 
 /* eslint-disable no-restricted-globals */
+
+let resolvePyodideProm: (pyodide: PyodideInterface) => void = () => {
+  throw new Error(
+    "resolvePyodideProm was called before it was set by the Promise callback."
+  );
+};
+let rejectPyodideProm: (error: Error) => void = (error) => {
+  throw error;
+};
+const pyodideProm: Promise<PyodideInterface> = new Promise(
+  (resolve, reject) => {
+    resolvePyodideProm = resolve;
+    rejectPyodideProm = reject;
+  }
+);
+
+let stdin = "";
+
+let sharedBuffer: undefined | SharedArrayBuffer;
+
+self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
+  const { data } = event;
+
+  if (data.kind === MessageToPyodideWorkerKind.SetSharedBuffer) {
+    pyodideProm.then(() => {
+      sharedBuffer = data.sharedBuffer;
+      typesafePostMessage({ kind: MessageFromPyodideWorkerKind.WorkerReady });
+    });
+    return;
+  }
+
+  if (data.kind === MessageToPyodideWorkerKind.Run) {
+    pyodideProm.then((pyodide) => {
+      try {
+        pyodide.runPython(data.code);
+      } catch (error) {
+        typesafePostMessage({
+          kind: MessageFromPyodideWorkerKind.Error,
+          errorString: String(error),
+        });
+      }
+    });
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _exhaustivenessCheck: never = data;
+};
 
 (self as any).importScripts(
   process.env.PUBLIC_URL + "/pyodide_0.26.1/pyodide.js"
@@ -31,75 +88,74 @@ const loadPyodide: (options?: {
     | PromiseLike<Uint8Array | ArrayBuffer>;
 }) => Promise<PyodideInterface> = (self as any).loadPyodide;
 
-const consoleEntries: ConsoleEntry[] = [];
-
-const pyodideProm = loadPyodide().then((pyodide) => {
+loadPyodide().then((pyodide) => {
   pyodide.setStdin({ stdin: handleStdinRequest });
   pyodide.setStdout({ write: handleStdoutRequest });
   pyodide.setStderr({ write: handleStderrRequest });
-  return pyodide;
-});
-
-interface PyodideWorkerMessage {
-  kind: "run";
-  code: string;
-}
-
-type ConsoleEntryKind = "input" | "output" | "error";
-
-interface ConsoleEntry {
-  readonly kind: ConsoleEntryKind;
-  readonly value: string;
-}
-
-self.onmessage = (event: MessageEvent<PyodideWorkerMessage>) => {
-  const { data } = event;
-  if (data.kind === "run") {
-    pyodideProm.then((pyodide) => {
-      try {
-        consoleEntries.splice(0, consoleEntries.length);
-        pyodide.runPython(data.code);
-        self.postMessage({ succeeded: true, consoleEntries });
-      } catch (error) {
-        self.postMessage({
-          succeeded: false,
-          consoleEntries,
-          errorString: String(error),
-        });
-      }
-    });
-    return;
-  }
-
-  throw new Error("Invalid message kind: " + data.kind);
-};
+  resolvePyodideProm(pyodide);
+}, rejectPyodideProm);
 
 function handleStdinRequest(): string {
-  const fullConsoleText = consoleEntries
-    .map((segment) => segment.value)
-    .join("");
-  const promptMessage = fullConsoleText.slice(
-    fullConsoleText.lastIndexOf("\n") + 1
-  );
-  const raw = window.prompt(promptMessage) ?? "";
-  const normalized = raw.endsWith("\n") ? raw : raw + "\n";
-  const entry: ConsoleEntry = { kind: "input", value: normalized };
-  consoleEntries.push(entry);
-  return normalized;
+  if (sharedBuffer === undefined) {
+    throw new Error("Called handleStdinRequest before sharedBuffer was set.");
+  }
+
+  while (true) {
+    const indexOfFirstNewline = stdin.indexOf("\n");
+    if (indexOfFirstNewline !== -1) {
+      const line = stdin.slice(0, indexOfFirstNewline + 1);
+      stdin = stdin.slice(indexOfFirstNewline + 1);
+      return line;
+    }
+
+    const i32arr = new Int32Array(sharedBuffer);
+    Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+    typesafePostMessage({ kind: MessageFromPyodideWorkerKind.StdinRequest });
+    Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+
+    const byteLength = new Uint32Array(sharedBuffer)[1];
+    const newInputBytes = new Uint8Array(sharedBuffer, 8, byteLength);
+    const newInputString = new TextDecoder().decode(newInputBytes.slice());
+    stdin += newInputString;
+  }
 }
 
 function handleStdoutRequest(output: Uint8Array): number {
-  const text = new TextDecoder().decode(output);
-  const entry: ConsoleEntry = { kind: "output", value: text };
-  consoleEntries.push(entry);
-  return output.length;
+  if (sharedBuffer === undefined) {
+    throw new Error("Called handleStdoutRequest before sharedBuffer was set.");
+  }
+
+  const outputLength = output.length;
+
+  const i32arr = new Int32Array(sharedBuffer);
+  Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+  typesafePostMessage({
+    kind: MessageFromPyodideWorkerKind.StdoutUpdate,
+    output,
+  });
+  Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+
+  return outputLength;
 }
 
 function handleStderrRequest(output: Uint8Array): number {
-  const text = new TextDecoder().decode(output);
-  const entry: ConsoleEntry = { kind: "error", value: text };
-  consoleEntries.push(entry);
-  return output.length;
+  if (sharedBuffer === undefined) {
+    throw new Error("Called handleStderrRequest before sharedBuffer was set.");
+  }
+
+  const outputLength = output.length;
+
+  const i32arr = new Int32Array(sharedBuffer);
+  Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+  typesafePostMessage({
+    kind: MessageFromPyodideWorkerKind.StderrUpdate,
+    output,
+  });
+  Atomics.wait(i32arr, 0, PyodideWorkerSignalCode.Waiting);
+
+  return outputLength;
 }
 
-export {};
+function typesafePostMessage(message: MessageFromPyodideWorker): void {
+  self.postMessage(message);
+}
