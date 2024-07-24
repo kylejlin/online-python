@@ -112,6 +112,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.handleConsoleInputCompositionEnd =
       this.handleConsoleInputCompositionEnd.bind(this);
     this.handleConsoleInputKeydown = this.handleConsoleInputKeydown.bind(this);
+    this.handleConsoleInputSubmit = this.handleConsoleInputSubmit.bind(this);
     this.handleConsoleInputFocus = this.handleConsoleInputFocus.bind(this);
     this.handleConsoleInputBlur = this.handleConsoleInputBlur.bind(this);
     this.handlePyodideWorkerMessage =
@@ -176,17 +177,22 @@ export class App extends React.Component<AppProps, AppState> {
                 M
               </span>
 
-              <input
-                className="ConsoleInput"
-                value={this.state.inputCompositionValue}
-                onChange={this.handleConsoleInputChange}
-                onCompositionStart={this.handleConsoleInputCompositionStart}
-                onCompositionEnd={this.handleConsoleInputCompositionEnd}
-                onKeyDown={this.handleConsoleInputKeydown}
-                onFocus={this.handleConsoleInputFocus}
-                onBlur={this.handleConsoleInputBlur}
-                ref={this.consoleInputRef}
-              />
+              <form
+                className="ConsoleInputContainer"
+                onSubmit={this.handleConsoleInputSubmit}
+              >
+                <input
+                  className="ConsoleInput"
+                  value={this.state.inputCompositionValue}
+                  onChange={this.handleConsoleInputChange}
+                  onCompositionStart={this.handleConsoleInputCompositionStart}
+                  onCompositionEnd={this.handleConsoleInputCompositionEnd}
+                  onKeyDown={this.handleConsoleInputKeydown}
+                  onFocus={this.handleConsoleInputFocus}
+                  onBlur={this.handleConsoleInputBlur}
+                  ref={this.consoleInputRef}
+                />
+              </form>
             </div>
           </div>
         </main>
@@ -319,17 +325,6 @@ export class App extends React.Component<AppProps, AppState> {
   handleConsoleInputKeydown(
     event: React.KeyboardEvent<HTMLInputElement>
   ): void {
-    if (event.key === "Enter" && !this.isComposingInput) {
-      this.stdin += "\n";
-      this.visiblyDeletableStdin = "";
-      this.transferStdinToSharedBufferIfWaitingFlagIsSet();
-      this.setState((prevState) => ({
-        ...prevState,
-        consoleText: prevState.consoleText + "\n",
-      }));
-      return;
-    }
-
     if (
       event.key === "Backspace" &&
       !this.isComposingInput &&
@@ -357,6 +352,18 @@ export class App extends React.Component<AppProps, AppState> {
       }));
       return;
     }
+  }
+
+  handleConsoleInputSubmit(event: React.FormEvent): void {
+    event.preventDefault();
+
+    this.stdin += "\n";
+    this.visiblyDeletableStdin = "";
+    this.transferStdinToSharedBufferIfWaitingFlagIsSet();
+    this.setState((prevState) => ({
+      ...prevState,
+      consoleText: prevState.consoleText + "\n",
+    }));
   }
 
   handleConsoleInputFocus(): void {

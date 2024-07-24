@@ -112,6 +112,10 @@
   margin-left: 8px;
 }
 
+.ConsoleInputContainer {
+  display: inline;
+}
+
 .ConsoleInput {
   outline: none;
   opacity: 0;
