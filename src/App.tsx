@@ -33,6 +33,7 @@ export class App extends React.Component<AppProps, AppState> {
   manualIsMounted: boolean;
   isComposingInput: boolean;
   stdin: string;
+  visiblyDeletableStdin: string;
   sharedBuffer: SharedArrayBuffer;
 
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
@@ -55,6 +56,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.isComposingInput = false;
 
     this.stdin = "";
+    this.visiblyDeletableStdin = "";
 
     this.sharedBuffer = new SharedArrayBuffer(8 + STDIN_BUFFER_SIZE);
 
@@ -168,6 +170,7 @@ export class App extends React.Component<AppProps, AppState> {
 
   handleRunRequest(): void {
     this.stdin = "";
+    this.visiblyDeletableStdin = "";
     this.unsetWaitingFlag();
     this.typesafePostMessage({
       kind: MessageToPyodideWorkerKind.Run,
@@ -187,6 +190,9 @@ export class App extends React.Component<AppProps, AppState> {
     }
 
     this.stdin += inputValue;
+    this.visiblyDeletableStdin = getLastLine(
+      this.visiblyDeletableStdin + inputValue
+    );
     this.setState((prevState) => ({
       ...prevState,
       consoleText: prevState.consoleText + inputValue,
@@ -207,6 +213,11 @@ export class App extends React.Component<AppProps, AppState> {
     }
 
     if (data.kind === MessageFromPyodideWorkerKind.Error) {
+      if (data.errorString.length === 0) {
+        return;
+      }
+
+      this.visiblyDeletableStdin = "";
       this.setState((prevState) => ({
         ...prevState,
         consoleText: prevState.consoleText + data.errorString,
@@ -223,11 +234,16 @@ export class App extends React.Component<AppProps, AppState> {
       data.kind === MessageFromPyodideWorkerKind.StdoutUpdate ||
       data.kind === MessageFromPyodideWorkerKind.StderrUpdate
     ) {
+      const newText = new TextDecoder().decode(data.output);
+      if (newText.length === 0) {
+        return;
+      }
+
+      this.visiblyDeletableStdin = "";
       this.setState(
         (prevState) => ({
           ...prevState,
-          consoleText:
-            prevState.consoleText + new TextDecoder().decode(data.output),
+          consoleText: prevState.consoleText + newText,
         }),
         this.unsetWaitingFlag
       );
@@ -250,6 +266,9 @@ export class App extends React.Component<AppProps, AppState> {
     this.isComposingInput = false;
 
     this.stdin += composedData;
+    this.visiblyDeletableStdin = getLastLine(
+      this.visiblyDeletableStdin + composedData
+    );
     this.setState((prevState) => ({
       ...prevState,
       consoleText: prevState.consoleText + composedData,
@@ -262,6 +281,7 @@ export class App extends React.Component<AppProps, AppState> {
   ): void {
     if (event.key === "Enter" && !this.isComposingInput) {
       this.stdin += "\n";
+      this.visiblyDeletableStdin = "";
       this.transferStdinToSharedBufferIfWaitingFlagIsSet();
       this.setState((prevState) => ({
         ...prevState,
@@ -276,11 +296,27 @@ export class App extends React.Component<AppProps, AppState> {
       !this.isComposingInput &&
       getLastLine(this.stdin).length > 0
     ) {
+      if (getLastLine(this.visiblyDeletableStdin).length === 0) {
+        const newStdin = withoutLastCharacter(this.stdin);
+        this.stdin = newStdin;
+        this.visiblyDeletableStdin = getLastLine(newStdin);
+        this.setState((prevState) => ({
+          ...prevState,
+          consoleText: prevState.consoleText + "^R\n" + getLastLine(newStdin),
+        }));
+
+        return;
+      }
+
       this.stdin = withoutLastCharacter(this.stdin);
+      this.visiblyDeletableStdin = withoutLastCharacter(
+        this.visiblyDeletableStdin
+      );
       this.setState((prevState) => ({
         ...prevState,
         consoleText: withoutLastCharacter(prevState.consoleText),
       }));
+      return;
     }
   }
 
@@ -298,6 +334,7 @@ export class App extends React.Component<AppProps, AppState> {
     const transferrable = this.stdin.slice(0, lastIndexOfNewline + 1);
     const transferrableBytes = new TextEncoder().encode(transferrable);
     this.stdin = this.stdin.slice(lastIndexOfNewline + 1);
+    this.visiblyDeletableStdin = getLastLine(this.stdin);
 
     Atomics.store(
       new Uint32Array(this.sharedBuffer),
