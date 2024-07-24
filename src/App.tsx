@@ -277,13 +277,23 @@ export class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    const stdinBytes = new TextEncoder().encode(this.stdin);
-    this.stdin = "";
+    const lastIndexOfNewline = this.stdin.lastIndexOf("\n");
+    if (lastIndexOfNewline === -1) {
+      return;
+    }
 
-    Atomics.store(new Uint32Array(this.sharedBuffer), 1, stdinBytes.length);
+    const transferrable = this.stdin.slice(0, lastIndexOfNewline + 1);
+    const transferrableBytes = new TextEncoder().encode(transferrable);
+    this.stdin = this.stdin.slice(lastIndexOfNewline + 1);
+
+    Atomics.store(
+      new Uint32Array(this.sharedBuffer),
+      1,
+      transferrableBytes.length
+    );
     const stdinBytesView = new Uint8Array(this.sharedBuffer, 8);
-    for (let i = 0; i < stdinBytes.length; ++i) {
-      const byte = stdinBytes[i];
+    for (let i = 0; i < transferrableBytes.length; ++i) {
+      const byte = transferrableBytes[i];
       Atomics.store(stdinBytesView, i, byte);
     }
 
