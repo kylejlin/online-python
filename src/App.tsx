@@ -563,6 +563,7 @@ export class App extends React.Component<AppProps, AppState> {
       reader.readAsText(file);
     });
     input.click();
+    this.setState({ isSettingsMenuOpen: false });
   }
 }
 
