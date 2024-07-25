@@ -39,6 +39,8 @@ interface AppState {
   readonly isRunningCode: boolean;
   readonly isSettingsMenuOpen: boolean;
   readonly isMouseOverSettingsMenu: boolean;
+  readonly isDownloadMenuOpen: boolean;
+  readonly downloadFileName: string;
   readonly settings: KojaSettings;
 }
 
@@ -62,6 +64,7 @@ export class App extends React.Component<AppProps, AppState> {
   waitBuffer: SharedArrayBuffer;
   interruptBuffer: SharedArrayBuffer;
   settingsButtonRef: React.RefObject<HTMLButtonElement>;
+  downloadFileNameInputRef: React.RefObject<HTMLInputElement>;
   consoleInputRef: React.RefObject<HTMLInputElement>;
 
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
@@ -81,6 +84,8 @@ export class App extends React.Component<AppProps, AppState> {
       isRunningCode: false,
       isSettingsMenuOpen: false,
       isMouseOverSettingsMenu: false,
+      isDownloadMenuOpen: false,
+      downloadFileName: "main.py",
       settings: getInitialSettings(),
     };
 
@@ -96,6 +101,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.interruptBuffer = new SharedArrayBuffer(4);
 
     this.settingsButtonRef = React.createRef();
+    this.downloadFileNameInputRef = React.createRef();
     this.consoleInputRef = React.createRef();
 
     this.typesafePostMessage = (): void => {
@@ -162,6 +168,8 @@ export class App extends React.Component<AppProps, AppState> {
       this.focusSettingsMenuButtonIfPossible.bind(this);
     this.handleDownloadCodeButtonClick =
       this.handleDownloadCodeButtonClick.bind(this);
+    this.focusDownloadFileNameInputAndUpdateSelectionIfPossible =
+      this.focusDownloadFileNameInputAndUpdateSelectionIfPossible.bind(this);
     this.handleUploadCodeButtonClick =
       this.handleUploadCodeButtonClick.bind(this);
     this.handleSettingsButtonBlur = this.handleSettingsButtonBlur.bind(this);
@@ -171,6 +179,13 @@ export class App extends React.Component<AppProps, AppState> {
       this.handleSettingsMenuMouseLeave.bind(this);
     this.toggleAutomaticConsoleClearSetting =
       this.toggleAutomaticConsoleClearSetting.bind(this);
+    this.handleDownloadFileNameInputChange =
+      this.handleDownloadFileNameInputChange.bind(this);
+    this.handleDownloadFileNameFormSubmit =
+      this.handleDownloadFileNameFormSubmit.bind(this);
+    this.downloadCodeAndCloseDownloadMenu =
+      this.downloadCodeAndCloseDownloadMenu.bind(this);
+    this.closeDownloadMenu = this.closeDownloadMenu.bind(this);
   }
 
   render() {
@@ -233,8 +248,7 @@ export class App extends React.Component<AppProps, AppState> {
 
         <section
           className={
-            "SettingsMenu" +
-            (this.state.isSettingsMenuOpen ? "" : " SettingsMenu--hidden")
+            "SettingsMenu" + (this.state.isSettingsMenuOpen ? "" : " Hidden")
           }
           onMouseEnter={this.handleSettingsMenuMouseEnter}
           onMouseLeave={this.handleSettingsMenuMouseLeave}
@@ -261,6 +275,50 @@ export class App extends React.Component<AppProps, AppState> {
               readOnly
             />{" "}
             Clear console on run
+          </div>
+        </section>
+
+        <section
+          className={
+            "DownloadMenuContainer" +
+            (this.state.isDownloadMenuOpen ? "" : " Hidden")
+          }
+          onMouseEnter={this.handleSettingsMenuMouseEnter}
+          onMouseLeave={this.handleSettingsMenuMouseLeave}
+        >
+          <div className="DownloadMenu">
+            <h2 className="DownloadMenuHeading">Download</h2>
+            <form
+              className="DownloadFileNameForm"
+              onSubmit={this.handleDownloadFileNameFormSubmit}
+            >
+              <span className="DownloadFileNameInputContainer">
+                <input
+                  className="DownloadFileNameInput"
+                  ref={this.downloadFileNameInputRef}
+                  placeholder="main.py"
+                  type="text"
+                  value={this.state.downloadFileName}
+                  onChange={this.handleDownloadFileNameInputChange}
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+              </span>
+            </form>
+            <div className="DownloadMenuButtons">
+              <button
+                className="Button Button--red SmallRightMargin"
+                onClick={this.closeDownloadMenu}
+              >
+                Cancel
+              </button>
+              <button
+                className="Button"
+                onClick={this.downloadCodeAndCloseDownloadMenu}
+              >
+                Download
+              </button>
+            </div>
           </div>
         </section>
 
@@ -634,17 +692,38 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleDownloadCodeButtonClick(): void {
+    this.setState(
+      { isSettingsMenuOpen: false, isDownloadMenuOpen: true },
+      this.focusDownloadFileNameInputAndUpdateSelectionIfPossible
+    );
+  }
+
+  focusDownloadFileNameInputAndUpdateSelectionIfPossible(): void {
+    const input = this.downloadFileNameInputRef.current;
+
+    if (input === null) {
+      return;
+    }
+
+    input.focus();
+    input.selectionStart = 0;
+    input.selectionEnd = "main".length;
+  }
+
+  downloadCode(): void {
     const blob = new Blob([this.state.editorValue], {
       type: "text/plain",
     });
     const url = URL.createObjectURL(blob);
 
+    const fileName = this.state.downloadFileName.endsWith(".py")
+      ? this.state.downloadFileName
+      : this.state.downloadFileName + ".py";
+
     const a = document.createElement("a");
     a.href = url;
-    a.download = "main.py";
+    a.download = fileName;
     a.click();
-
-    this.setState({ isSettingsMenuOpen: false });
   }
 
   handleUploadCodeButtonClick(): void {
@@ -703,6 +782,28 @@ export class App extends React.Component<AppProps, AppState> {
       );
       return { ...prevState, settings: newSettings };
     });
+  }
+
+  handleDownloadFileNameInputChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void {
+    this.setState({ downloadFileName: event.target.value });
+  }
+
+  handleDownloadFileNameFormSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ): void {
+    event.preventDefault();
+    this.downloadCodeAndCloseDownloadMenu();
+  }
+
+  downloadCodeAndCloseDownloadMenu(): void {
+    this.downloadCode();
+    this.setState({ isDownloadMenuOpen: false });
+  }
+
+  closeDownloadMenu(): void {
+    this.setState({ isDownloadMenuOpen: false });
   }
 }
 

@@ -23,7 +23,10 @@
   flex-direction: row;
 
   user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
   -webkit-user-select: none;
+  -o-user-select: none;
 }
 
 .HeaderItem {
@@ -72,10 +75,13 @@
   right: 0;
   z-index: 1;
   user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
   -webkit-user-select: none;
+  -o-user-select: none;
 }
 
-.SettingsMenu--hidden {
+.Hidden.Hidden {
   display: none;
 }
 
@@ -91,6 +97,70 @@
   background-color: #ebeced;
   color: black;
   filter: brightness(0.8);
+}
+
+.DownloadMenuContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  /* flex-direction: column; */
+
+  background-color: #00000088;
+}
+
+.DownloadMenu {
+  min-width: 300px;
+  width: min-content;
+  height: min-content;
+
+  background-color: #fffffe;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.DownloadMenuHeading {
+  margin: 0;
+  font-size: 24px;
+  font-family: var(--ui-font-family);
+  font-weight: normal;
+
+  user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -o-user-select: none;
+}
+
+.DownloadFileNameForm {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.DownloadFileNameInputContainer {
+  display: block;
+  padding-right: 16px;
+}
+
+.DownloadFileNameInput {
+  width: 100%;
+  padding: 8px;
+  font-family: var(--ui-font-family);
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.DownloadMenuButtons {
+  white-space: nowrap;
+  text-align: right;
 }
 
 .Main {
