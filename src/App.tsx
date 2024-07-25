@@ -49,18 +49,14 @@ export class App extends React.Component<AppProps, AppState> {
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
   terminatePyodideWorker: () => void;
 
-  readonly initialEditorValue: string;
-
   constructor(props: AppProps) {
     super(props);
 
     this.bindMethods();
 
-    this.initialEditorValue = getInitialEditorValue();
-
     this.state = {
       isPyodideWorkerReady: false,
-      editorValue: this.initialEditorValue,
+      editorValue: getInitialEditorValue(),
       consoleText: "",
       inputCompositionValue: "",
       isConsoleInputFocused: false,
