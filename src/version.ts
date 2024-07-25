@@ -1,1 +1,1 @@
-export const KOJA_VERSION_WITHOUT_V = "1.0.5";
+export const KOJA_VERSION_WITHOUT_V = "1.0.6";
