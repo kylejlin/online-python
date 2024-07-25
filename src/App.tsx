@@ -16,8 +16,10 @@ monacoLoader.config({
   },
 });
 
+const LOCAL_STORAGE_CODE_KEY = "koja.pythonCode";
+
 const DEFAULT_EDITOR_VALUE =
-  'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\nprint("Done")';
+  'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\n';
 
 const STDIN_BUFFER_SIZE = 400_000;
 
@@ -45,14 +47,18 @@ export class App extends React.Component<AppProps, AppState> {
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
   terminatePyodideWorker: () => void;
 
+  readonly initialEditorValue: string;
+
   constructor(props: AppProps) {
     super(props);
 
     this.bindMethods();
 
+    this.initialEditorValue = getInitialEditorValue();
+
     this.state = {
       isPyodideWorkerReady: false,
-      editorValue: DEFAULT_EDITOR_VALUE,
+      editorValue: this.initialEditorValue,
       consoleText: "",
       inputCompositionValue: "",
       isConsoleInputFocused: false,
@@ -169,7 +175,7 @@ export class App extends React.Component<AppProps, AppState> {
           <div className="EditorContainer">
             <Editor
               defaultLanguage="python"
-              defaultValue={DEFAULT_EDITOR_VALUE}
+              defaultValue={this.initialEditorValue}
               onChange={this.handleEditorChange}
             />
           </div>
@@ -227,6 +233,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState({
       editorValue: value,
     });
+    localStorage.setItem(LOCAL_STORAGE_CODE_KEY, value);
   }
 
   handleRunRequest(): void {
@@ -489,4 +496,13 @@ function withoutLastCharacter(text: string): string {
     /(?:[\0-\t\x0B\f\x0E-\u2027\u202A-\uD7FF\uE000-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF])$/,
     ""
   );
+}
+
+function getInitialEditorValue(): string {
+  const storedCode = localStorage.getItem(LOCAL_STORAGE_CODE_KEY);
+  if (storedCode !== null) {
+    return storedCode;
+  }
+
+  return DEFAULT_EDITOR_VALUE;
 }
