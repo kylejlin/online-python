@@ -141,6 +141,10 @@ export class App extends React.Component<AppProps, AppState> {
       this.focusConsoleInputIfPossible.bind(this);
     this.toggleSettingsMenuVisibility =
       this.toggleSettingsMenuVisibility.bind(this);
+    this.handleDownloadCodeButtonClick =
+      this.handleDownloadCodeButtonClick.bind(this);
+    this.handleUploadCodeButtonClick =
+      this.handleUploadCodeButtonClick.bind(this);
   }
 
   render() {
@@ -200,15 +204,25 @@ export class App extends React.Component<AppProps, AppState> {
             (this.state.isSettingsMenuOpen ? "" : " SettingsMenu--hidden")
           }
         >
-          <div className="SettingsMenuItem">Download code</div>
-          <div className="SettingsMenuItem">Upload code</div>
+          <div
+            className="SettingsMenuItem"
+            onClick={this.handleDownloadCodeButtonClick}
+          >
+            Download code
+          </div>
+          <div
+            className="SettingsMenuItem"
+            onClick={this.handleUploadCodeButtonClick}
+          >
+            Upload code
+          </div>
         </section>
 
         <main className="Main">
           <div className="EditorContainer">
             <Editor
               defaultLanguage="python"
-              defaultValue={this.initialEditorValue}
+              value={this.state.editorValue}
               onChange={this.handleEditorChange}
             />
           </div>
@@ -513,6 +527,42 @@ export class App extends React.Component<AppProps, AppState> {
       ...prevState,
       isSettingsMenuOpen: !prevState.isSettingsMenuOpen,
     }));
+  }
+
+  handleDownloadCodeButtonClick(): void {
+    const blob = new Blob([this.state.editorValue], {
+      type: "text/plain",
+    });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "main.py";
+    a.click();
+
+    this.setState({ isSettingsMenuOpen: false });
+  }
+
+  handleUploadCodeButtonClick(): void {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".py";
+    input.addEventListener("change", () => {
+      const files = input.files ?? [];
+      if (files.length === 0) {
+        return;
+      }
+
+      const file = files[0];
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        const text = reader.result as string;
+        this.setState({ editorValue: text });
+        localStorage.setItem(LOCAL_STORAGE_CODE_KEY, text);
+      });
+      reader.readAsText(file);
+    });
+    input.click();
   }
 }
 
