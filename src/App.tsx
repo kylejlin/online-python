@@ -29,12 +29,19 @@ interface AppProps {}
 interface AppState {
   readonly isPyodideWorkerReady: boolean;
   readonly editorValue: string;
-  readonly consoleText: string;
+  readonly consoleText: readonly ConsoleTextSegment[];
   readonly inputCompositionValue: string;
   readonly isConsoleInputFocused: boolean;
   readonly isRunningCode: boolean;
   readonly isSettingsMenuOpen: boolean;
   readonly isMouseOverSettingsMenu: boolean;
+}
+
+type ConsoleTextSegmentKind = "stdin" | "stdout" | "stderr";
+
+interface ConsoleTextSegment {
+  readonly kind: ConsoleTextSegmentKind;
+  readonly text: string;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -58,7 +65,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.state = {
       isPyodideWorkerReady: false,
       editorValue: getInitialEditorValue(),
-      consoleText: "",
+      consoleText: [],
       inputCompositionValue: "",
       isConsoleInputFocused: false,
       isRunningCode: false,
@@ -243,7 +250,13 @@ export class App extends React.Component<AppProps, AppState> {
             onClick={this.focusConsoleInputIfPossible}
           >
             <div className="Console">
-              <span className="ConsoleText">{this.state.consoleText}</span>
+              <span className="ConsoleText">
+                {this.state.consoleText.map((segment) => (
+                  <span className={"ConsoleTextSegment--" + segment.kind}>
+                    {segment.text}
+                  </span>
+                ))}
+              </span>
               {this.isComposingInput && (
                 <span className="ConsoleText ConsoleText--compositionText">
                   {this.state.inputCompositionValue}
@@ -326,7 +339,7 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   clearConsole(): void {
-    this.setState({ consoleText: "" });
+    this.setState({ consoleText: [] });
   }
 
   handleConsoleInputChange(event: React.ChangeEvent<HTMLInputElement>): void {
@@ -346,7 +359,9 @@ export class App extends React.Component<AppProps, AppState> {
     );
     this.setState((prevState) => ({
       ...prevState,
-      consoleText: prevState.consoleText + inputValue,
+      consoleText: prevState.consoleText.concat([
+        { kind: "stdin", text: inputValue },
+      ]),
       inputCompositionValue: "",
     }));
   }
@@ -377,7 +392,9 @@ export class App extends React.Component<AppProps, AppState> {
       this.visiblyDeletableStdin = "";
       this.setState((prevState) => ({
         ...prevState,
-        consoleText: prevState.consoleText + data.errorString,
+        consoleText: prevState.consoleText.concat([
+          { kind: "stderr", text: data.errorString },
+        ]),
         isRunningCode: false,
       }));
       return;
@@ -388,10 +405,7 @@ export class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    if (
-      data.kind === MessageFromPyodideWorkerKind.StdoutUpdate ||
-      data.kind === MessageFromPyodideWorkerKind.StderrUpdate
-    ) {
+    if (data.kind === MessageFromPyodideWorkerKind.StdoutUpdate) {
       const newText = new TextDecoder().decode(data.output);
       if (newText.length === 0) {
         return;
@@ -401,7 +415,28 @@ export class App extends React.Component<AppProps, AppState> {
       this.setState(
         (prevState) => ({
           ...prevState,
-          consoleText: prevState.consoleText + newText,
+          consoleText: prevState.consoleText.concat([
+            { kind: "stdout", text: newText },
+          ]),
+        }),
+        this.unsetWaitingFlag
+      );
+      return;
+    }
+
+    if (data.kind === MessageFromPyodideWorkerKind.StderrUpdate) {
+      const newText = new TextDecoder().decode(data.output);
+      if (newText.length === 0) {
+        return;
+      }
+
+      this.visiblyDeletableStdin = "";
+      this.setState(
+        (prevState) => ({
+          ...prevState,
+          consoleText: prevState.consoleText.concat([
+            { kind: "stderr", text: newText },
+          ]),
         }),
         this.unsetWaitingFlag
       );
@@ -429,7 +464,9 @@ export class App extends React.Component<AppProps, AppState> {
     );
     this.setState((prevState) => ({
       ...prevState,
-      consoleText: prevState.consoleText + composedData,
+      consoleText: prevState.consoleText.concat([
+        { kind: "stdin", text: composedData },
+      ]),
       inputCompositionValue: "",
     }));
   }
@@ -448,7 +485,10 @@ export class App extends React.Component<AppProps, AppState> {
         this.visiblyDeletableStdin = getLastLine(newStdin);
         this.setState((prevState) => ({
           ...prevState,
-          consoleText: prevState.consoleText + "^R\n" + getLastLine(newStdin),
+          consoleText: prevState.consoleText.concat([
+            { kind: "stdout", text: "^R\n" },
+            { kind: "stdin", text: getLastLine(newStdin) },
+          ]),
         }));
 
         return;
@@ -460,7 +500,9 @@ export class App extends React.Component<AppProps, AppState> {
       );
       this.setState((prevState) => ({
         ...prevState,
-        consoleText: withoutLastCharacter(prevState.consoleText),
+        consoleText: withoutLastCharacterRemovedFromLastSegment(
+          prevState.consoleText
+        ),
       }));
       return;
     }
@@ -474,7 +516,9 @@ export class App extends React.Component<AppProps, AppState> {
     this.transferStdinToSharedBufferIfWaitingFlagIsSet();
     this.setState((prevState) => ({
       ...prevState,
-      consoleText: prevState.consoleText + "\n",
+      consoleText: prevState.consoleText.concat([
+        { kind: "stdin", text: "\n" },
+      ]),
     }));
   }
 
@@ -616,6 +660,22 @@ function withoutLastCharacter(text: string): string {
     /(?:[\0-\t\x0B\f\x0E-\u2027\u202A-\uD7FF\uE000-\uFFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF])$/,
     ""
   );
+}
+
+function withoutLastCharacterRemovedFromLastSegment(
+  segments: readonly ConsoleTextSegment[]
+): readonly ConsoleTextSegment[] {
+  const out = segments.filter((s) => s.text.length > 0);
+  if (out.length === 0) {
+    return out;
+  }
+
+  const lastSegment = out[out.length - 1];
+  out[out.length - 1] = {
+    ...lastSegment,
+    text: withoutLastCharacter(lastSegment.text),
+  };
+  return out;
 }
 
 function getInitialEditorValue(): string {

@@ -136,6 +136,14 @@
   color: white;
 }
 
+.ConsoleTextSegment--stdin {
+  color: var(--green);
+}
+
+.ConsoleTextSegment--stderr {
+  color: var(--red);
+}
+
 .Button {
   color: white;
   background-color: var(--blue);
