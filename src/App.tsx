@@ -18,9 +18,13 @@ monacoLoader.config({
 });
 
 const LOCAL_STORAGE_CODE_KEY = "koja.pythonCode";
+const LOCAL_STORAGE_SETTINGS_KEY = "koja.settings";
 
 const DEFAULT_EDITOR_VALUE =
   'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\n';
+const DEFAULT_SETTINGS: KojaSettings = {
+  clearConsoleOnRun: true,
+};
 
 const STDIN_BUFFER_SIZE = 400_000;
 
@@ -35,6 +39,7 @@ interface AppState {
   readonly isRunningCode: boolean;
   readonly isSettingsMenuOpen: boolean;
   readonly isMouseOverSettingsMenu: boolean;
+  readonly settings: KojaSettings;
 }
 
 type ConsoleTextSegmentKind = "stdin" | "stdout" | "stderr";
@@ -42,6 +47,10 @@ type ConsoleTextSegmentKind = "stdin" | "stdout" | "stderr";
 interface ConsoleTextSegment {
   readonly kind: ConsoleTextSegmentKind;
   readonly text: string;
+}
+
+interface KojaSettings {
+  readonly clearConsoleOnRun: boolean;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -71,6 +80,7 @@ export class App extends React.Component<AppProps, AppState> {
       isRunningCode: false,
       isSettingsMenuOpen: false,
       isMouseOverSettingsMenu: false,
+      settings: getInitialSettings(),
     };
 
     this.manualIsMounted = false;
@@ -155,6 +165,8 @@ export class App extends React.Component<AppProps, AppState> {
       this.handleSettingsMenuMouseEnter.bind(this);
     this.handleSettingsMenuMouseLeave =
       this.handleSettingsMenuMouseLeave.bind(this);
+    this.toggleAutomaticConsoleClearSetting =
+      this.toggleAutomaticConsoleClearSetting.bind(this);
   }
 
   render() {
@@ -234,6 +246,17 @@ export class App extends React.Component<AppProps, AppState> {
           >
             Upload code
           </div>
+          <div
+            className="SettingsMenuItem"
+            onClick={this.toggleAutomaticConsoleClearSetting}
+          >
+            <input
+              type="checkbox"
+              checked={this.state.settings.clearConsoleOnRun}
+              readOnly
+            />{" "}
+            Clear console on run
+          </div>
         </section>
 
         <main className="Main">
@@ -308,16 +331,24 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleRunRequest(): void {
-    this.setState({ isRunningCode: true }, () => {
-      this.stdin = "";
-      this.visiblyDeletableStdin = "";
-      this.clearStdinBusBuffer();
-      this.interruptPyodideWorker();
-      this.typesafePostMessage({
-        kind: MessageToPyodideWorkerKind.Run,
-        code: this.state.editorValue,
-      });
-    });
+    this.setState(
+      (prevState) => ({
+        isRunningCode: true,
+        consoleText: prevState.settings.clearConsoleOnRun
+          ? []
+          : prevState.consoleText,
+      }),
+      () => {
+        this.stdin = "";
+        this.visiblyDeletableStdin = "";
+        this.clearStdinBusBuffer();
+        this.interruptPyodideWorker();
+        this.typesafePostMessage({
+          kind: MessageToPyodideWorkerKind.Run,
+          code: this.state.editorValue,
+        });
+      }
+    );
   }
 
   handleInterruptRequest(): void {
@@ -638,6 +669,20 @@ export class App extends React.Component<AppProps, AppState> {
   handleSettingsMenuMouseLeave(): void {
     this.setState({ isMouseOverSettingsMenu: false });
   }
+
+  toggleAutomaticConsoleClearSetting(): void {
+    this.setState((prevState) => {
+      const newSettings: KojaSettings = {
+        ...prevState.settings,
+        clearConsoleOnRun: !prevState.settings.clearConsoleOnRun,
+      };
+      localStorage.setItem(
+        LOCAL_STORAGE_SETTINGS_KEY,
+        JSON.stringify(newSettings)
+      );
+      return { ...prevState, settings: newSettings };
+    });
+  }
 }
 
 function getLastLine(text: string): string {
@@ -685,4 +730,26 @@ function getInitialEditorValue(): string {
   }
 
   return DEFAULT_EDITOR_VALUE;
+}
+
+function getInitialSettings(): KojaSettings {
+  const storedSettings = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
+  if (storedSettings === null) {
+    return DEFAULT_SETTINGS;
+  }
+
+  try {
+    const settings = JSON.parse(storedSettings);
+    if (
+      typeof settings === "object" &&
+      settings !== null &&
+      typeof settings.clearConsoleOnRun === "boolean"
+    ) {
+      return settings;
+    }
+
+    return DEFAULT_SETTINGS;
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
 }
