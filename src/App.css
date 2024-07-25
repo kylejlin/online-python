@@ -8,6 +8,7 @@
   --blue: #4e97fe;
   --red: #e60000;
   --green: #319331;
+  --ui-font-family: "Arial" sans-serif;
 }
 
 .Header {
@@ -33,8 +34,51 @@
   height: 100%;
 }
 
+.RightAlign {
+  display: flex;
+  flex-grow: 1;
+  justify-content: right;
+}
+
+.HeaderSettingsIcon {
+  cursor: pointer;
+}
+
+.HeaderSettingsIcon path {
+  fill: #666;
+}
+
 .PyodideLoadingNotification {
   font-weight: bold;
+}
+
+.SettingsMenu {
+  background-color: #ebeced;
+  color: black;
+  position: absolute;
+  top: var(--header-height);
+  right: 0;
+  z-index: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.SettingsMenu--hidden {
+  display: none;
+}
+
+.SettingsMenuItem {
+  font-family: var(--ui-font-family);
+  font-size: 12px;
+  padding: 12px;
+  cursor: pointer;
+  border-top: 1px solid #ccc;
+}
+
+.SettingsMenuItem:hover {
+  background-color: #ebeced;
+  color: black;
+  filter: brightness(0.8);
 }
 
 .Main {
@@ -83,6 +127,7 @@
 .Button {
   color: white;
   background-color: var(--blue);
+  font-family: var(--ui-font-family);
   font-size: 12px;
   font-weight: bold;
   white-space: nowrap;
@@ -159,10 +204,4 @@
   border: 1px solid black;
   width: min-content;
   min-height: 12px;
-}
-
-.RightAlign {
-  display: flex;
-  flex-grow: 1;
-  justify-content: right;
 }

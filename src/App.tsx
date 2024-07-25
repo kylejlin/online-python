@@ -9,7 +9,7 @@ import {
   MessageToPyodideWorkerKind,
   PyodideWorkerSignalCode,
 } from "./workerMessage";
-import settings_icon_url from "./images/settings_icon.svg";
+import { SettingsIcon } from "./icons";
 
 monacoLoader.config({
   paths: {
@@ -33,6 +33,7 @@ interface AppState {
   readonly inputCompositionValue: string;
   readonly isConsoleInputFocused: boolean;
   readonly isRunningCode: boolean;
+  readonly isSettingsMenuOpen: boolean;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -64,6 +65,7 @@ export class App extends React.Component<AppProps, AppState> {
       inputCompositionValue: "",
       isConsoleInputFocused: false,
       isRunningCode: false,
+      isSettingsMenuOpen: false,
     };
 
     this.manualIsMounted = false;
@@ -137,6 +139,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
     this.focusConsoleInputIfPossible =
       this.focusConsoleInputIfPossible.bind(this);
+    this.handleSettingsButtonClick = this.handleSettingsButtonClick.bind(this);
   }
 
   render() {
@@ -173,15 +176,24 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="RightAlign">
             <div className="HeaderItem SmallRightMargin">
-              <img
+              <SettingsIcon
                 className="HeaderSettingsIcon"
-                src={settings_icon_url}
-                alt="settings"
                 width="24"
+                onClick={this.handleSettingsButtonClick}
               />
             </div>
           </div>
         </header>
+
+        <section
+          className={
+            "SettingsMenu" +
+            (this.state.isSettingsMenuOpen ? "" : " SettingsMenu--hidden")
+          }
+        >
+          <div className="SettingsMenuItem">Download code</div>
+          <div className="SettingsMenuItem">Upload code</div>
+        </section>
 
         <main className="Main">
           <div className="EditorContainer">
@@ -485,6 +497,13 @@ export class App extends React.Component<AppProps, AppState> {
       return;
     }
     input.focus();
+  }
+
+  handleSettingsButtonClick(): void {
+    this.setState((prevState) => ({
+      ...prevState,
+      isSettingsMenuOpen: !prevState.isSettingsMenuOpen,
+    }));
   }
 }
 
