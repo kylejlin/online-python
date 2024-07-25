@@ -3,8 +3,7 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import { App } from "./App";
 import reportWebVitals from "./reportWebVitals";
-
-const VERSION = "v1.0.4";
+import packageJson from "../package.json";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -20,4 +19,4 @@ root.render(
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
 
-console.log("Koja " + VERSION);
+console.log("Koja v" + packageJson.version);
