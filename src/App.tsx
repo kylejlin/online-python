@@ -667,7 +667,10 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleSettingsMenuMouseLeave(): void {
-    this.setState({ isMouseOverSettingsMenu: false });
+    this.setState({
+      isMouseOverSettingsMenu: false,
+      isSettingsMenuOpen: false,
+    });
   }
 
   toggleAutomaticConsoleClearSetting(): void {
