@@ -34,6 +34,7 @@ interface AppState {
   readonly isConsoleInputFocused: boolean;
   readonly isRunningCode: boolean;
   readonly isSettingsMenuOpen: boolean;
+  readonly isMouseOverSettingsMenu: boolean;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -62,6 +63,7 @@ export class App extends React.Component<AppProps, AppState> {
       isConsoleInputFocused: false,
       isRunningCode: false,
       isSettingsMenuOpen: false,
+      isMouseOverSettingsMenu: false,
     };
 
     this.manualIsMounted = false;
@@ -142,6 +144,10 @@ export class App extends React.Component<AppProps, AppState> {
     this.handleUploadCodeButtonClick =
       this.handleUploadCodeButtonClick.bind(this);
     this.handleSettingsButtonBlur = this.handleSettingsButtonBlur.bind(this);
+    this.handleSettingsMenuMouseEnter =
+      this.handleSettingsMenuMouseEnter.bind(this);
+    this.handleSettingsMenuMouseLeave =
+      this.handleSettingsMenuMouseLeave.bind(this);
   }
 
   render() {
@@ -206,6 +212,8 @@ export class App extends React.Component<AppProps, AppState> {
             "SettingsMenu" +
             (this.state.isSettingsMenuOpen ? "" : " SettingsMenu--hidden")
           }
+          onMouseEnter={this.handleSettingsMenuMouseEnter}
+          onMouseLeave={this.handleSettingsMenuMouseLeave}
         >
           <div
             className="SettingsMenuItem"
@@ -570,7 +578,21 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   handleSettingsButtonBlur(): void {
-    this.setState({ isSettingsMenuOpen: false });
+    this.setState((prevState) => {
+      if (prevState.isMouseOverSettingsMenu) {
+        return prevState;
+      }
+
+      return { ...prevState, isSettingsMenuOpen: false };
+    });
+  }
+
+  handleSettingsMenuMouseEnter(): void {
+    this.setState({ isMouseOverSettingsMenu: true });
+  }
+
+  handleSettingsMenuMouseLeave(): void {
+    this.setState({ isMouseOverSettingsMenu: false });
   }
 }
 
