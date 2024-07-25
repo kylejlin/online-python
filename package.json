@@ -1,6 +1,6 @@
 {
   "name": "koja",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
@@ -25,7 +25,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "node scripts/copyVersion.js && react-scripts build",
+    "sync-version": "node scripts/syncVersion.js",
+    "build": "npm run sync-version && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
