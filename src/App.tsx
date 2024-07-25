@@ -707,7 +707,9 @@ export class App extends React.Component<AppProps, AppState> {
 
     input.focus();
     input.selectionStart = 0;
-    input.selectionEnd = "main".length;
+    const dotPyIndex = this.state.downloadFileName.lastIndexOf(".py");
+    input.selectionEnd =
+      dotPyIndex === -1 ? this.state.downloadFileName.length : dotPyIndex;
   }
 
   downloadCode(): void {
