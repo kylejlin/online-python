@@ -9,6 +9,7 @@ import {
   MessageToPyodideWorkerKind,
   PyodideWorkerSignalCode,
 } from "./workerMessage";
+import settings_icon_url from "./images/settings_icon.svg";
 
 monacoLoader.config({
   paths: {
@@ -168,6 +169,17 @@ export class App extends React.Component<AppProps, AppState> {
             <button className="Button" onClick={this.clearConsole}>
               Clear Console
             </button>
+          </div>
+
+          <div className="RightAlign">
+            <div className="HeaderItem SmallRightMargin">
+              <img
+                className="HeaderSettingsIcon"
+                src={settings_icon_url}
+                alt="settings"
+                width="24"
+              />
+            </div>
           </div>
         </header>
 
