@@ -61,6 +61,7 @@ export class App extends React.Component<AppProps, AppState> {
   stdinBusBuffer: SharedArrayBuffer;
   waitBuffer: SharedArrayBuffer;
   interruptBuffer: SharedArrayBuffer;
+  settingsButtonRef: React.RefObject<HTMLButtonElement>;
   consoleInputRef: React.RefObject<HTMLInputElement>;
 
   typesafePostMessage: (message: MessageToPyodideWorker) => void;
@@ -94,6 +95,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.waitBuffer = new SharedArrayBuffer(4);
     this.interruptBuffer = new SharedArrayBuffer(4);
 
+    this.settingsButtonRef = React.createRef();
     this.consoleInputRef = React.createRef();
 
     this.typesafePostMessage = (): void => {
@@ -154,8 +156,10 @@ export class App extends React.Component<AppProps, AppState> {
     this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
     this.focusConsoleInputIfPossible =
       this.focusConsoleInputIfPossible.bind(this);
-    this.toggleSettingsMenuVisibility =
-      this.toggleSettingsMenuVisibility.bind(this);
+    this.handleSettingsMenuButtonClick =
+      this.handleSettingsMenuButtonClick.bind(this);
+    this.focusSettingsMenuButtonIfPossible =
+      this.focusSettingsMenuButtonIfPossible.bind(this);
     this.handleDownloadCodeButtonClick =
       this.handleDownloadCodeButtonClick.bind(this);
     this.handleUploadCodeButtonClick =
@@ -205,8 +209,9 @@ export class App extends React.Component<AppProps, AppState> {
             <div className="HeaderItem SmallRightMargin">
               <button
                 className="ToggleSettingsMenuVisibilityButton"
-                onClick={this.toggleSettingsMenuVisibility}
+                onClick={this.handleSettingsMenuButtonClick}
                 onBlur={this.handleSettingsButtonBlur}
+                ref={this.settingsButtonRef}
               >
                 {this.state.isSettingsMenuOpen ? (
                   <CloseIcon
@@ -608,11 +613,24 @@ export class App extends React.Component<AppProps, AppState> {
     input.focus();
   }
 
-  toggleSettingsMenuVisibility(): void {
-    this.setState((prevState) => ({
-      ...prevState,
-      isSettingsMenuOpen: !prevState.isSettingsMenuOpen,
-    }));
+  handleSettingsMenuButtonClick(): void {
+    this.setState(
+      (prevState) => ({
+        ...prevState,
+        isSettingsMenuOpen: !prevState.isSettingsMenuOpen,
+      }),
+      this.focusSettingsMenuButtonIfPossible
+    );
+  }
+
+  focusSettingsMenuButtonIfPossible(): void {
+    const button = this.settingsButtonRef.current;
+
+    if (button === null) {
+      return;
+    }
+
+    button.focus();
   }
 
   handleDownloadCodeButtonClick(): void {
