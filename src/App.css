@@ -40,8 +40,11 @@
   justify-content: right;
 }
 
-.HeaderOpenSettingsIcon,
-.HeaderCloseSettingsIcon {
+.ToggleSettingsMenuVisibilityButton {
+  display: inline;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
 }
 

@@ -141,6 +141,7 @@ export class App extends React.Component<AppProps, AppState> {
       this.handleDownloadCodeButtonClick.bind(this);
     this.handleUploadCodeButtonClick =
       this.handleUploadCodeButtonClick.bind(this);
+    this.handleSettingsButtonBlur = this.handleSettingsButtonBlur.bind(this);
   }
 
   render() {
@@ -177,19 +178,25 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="RightAlign">
             <div className="HeaderItem SmallRightMargin">
-              {this.state.isSettingsMenuOpen ? (
-                <CloseIcon
-                  className="HeaderCloseSettingsIcon"
-                  width="24"
-                  onClick={this.toggleSettingsMenuVisibility}
-                />
-              ) : (
-                <SettingsIcon
-                  className="HeaderOpenSettingsIcon"
-                  width="24"
-                  onClick={this.toggleSettingsMenuVisibility}
-                />
-              )}
+              <button
+                className="ToggleSettingsMenuVisibilityButton"
+                onClick={this.toggleSettingsMenuVisibility}
+                onBlur={this.handleSettingsButtonBlur}
+              >
+                {this.state.isSettingsMenuOpen ? (
+                  <CloseIcon
+                    className="HeaderCloseSettingsIcon"
+                    width="24"
+                    height="24"
+                  />
+                ) : (
+                  <SettingsIcon
+                    className="HeaderOpenSettingsIcon"
+                    width="24"
+                    height="24"
+                  />
+                )}
+              </button>
             </div>
           </div>
         </header>
@@ -559,6 +566,10 @@ export class App extends React.Component<AppProps, AppState> {
       reader.readAsText(file);
     });
     input.click();
+    this.setState({ isSettingsMenuOpen: false });
+  }
+
+  handleSettingsButtonBlur(): void {
     this.setState({ isSettingsMenuOpen: false });
   }
 }
