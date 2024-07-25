@@ -9,7 +9,7 @@ import {
   MessageToPyodideWorkerKind,
   PyodideWorkerSignalCode,
 } from "./workerMessage";
-import { SettingsIcon } from "./icons";
+import { CloseIcon, SettingsIcon } from "./icons";
 
 monacoLoader.config({
   paths: {
@@ -139,7 +139,8 @@ export class App extends React.Component<AppProps, AppState> {
     this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
     this.focusConsoleInputIfPossible =
       this.focusConsoleInputIfPossible.bind(this);
-    this.handleSettingsButtonClick = this.handleSettingsButtonClick.bind(this);
+    this.toggleSettingsMenuVisibility =
+      this.toggleSettingsMenuVisibility.bind(this);
   }
 
   render() {
@@ -176,11 +177,19 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div className="RightAlign">
             <div className="HeaderItem SmallRightMargin">
-              <SettingsIcon
-                className="HeaderSettingsIcon"
-                width="24"
-                onClick={this.handleSettingsButtonClick}
-              />
+              {this.state.isSettingsMenuOpen ? (
+                <CloseIcon
+                  className="HeaderCloseSettingsIcon"
+                  width="24"
+                  onClick={this.toggleSettingsMenuVisibility}
+                />
+              ) : (
+                <SettingsIcon
+                  className="HeaderOpenSettingsIcon"
+                  width="24"
+                  onClick={this.toggleSettingsMenuVisibility}
+                />
+              )}
             </div>
           </div>
         </header>
@@ -499,7 +508,7 @@ export class App extends React.Component<AppProps, AppState> {
     input.focus();
   }
 
-  handleSettingsButtonClick(): void {
+  toggleSettingsMenuVisibility(): void {
     this.setState((prevState) => ({
       ...prevState,
       isSettingsMenuOpen: !prevState.isSettingsMenuOpen,

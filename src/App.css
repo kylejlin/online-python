@@ -40,12 +40,17 @@
   justify-content: right;
 }
 
-.HeaderSettingsIcon {
+.HeaderOpenSettingsIcon,
+.HeaderCloseSettingsIcon {
   cursor: pointer;
 }
 
-.HeaderSettingsIcon path {
+.HeaderOpenSettingsIcon path {
   fill: #666;
+}
+
+.HeaderCloseSettingsIcon path {
+  fill: #aa000088;
 }
 
 .PyodideLoadingNotification {

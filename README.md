@@ -18,4 +18,5 @@ This shouldn't affect you, unless for some reason you are expecting the Pyodide 
 
 ## Attribution
 
-[Settings](https://icons8.com/icon/2969/settings) icon by [Icons8](https://icons8.com).
+1. [Settings icon](https://icons8.com/icon/2969/settings) by [Icons8](https://icons8.com).
+2. [Close icon](https://icons8.com/icon/71200/close) by [Icons8](https://icons8.com).
