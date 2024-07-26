@@ -106,11 +106,16 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
     pyodideProm.then((pyodide) => {
       locals =
         locals ??
-        pyodide.toPy({
-          exit: () => {
+        ((): PyProxy => {
+          const overriddenExit = () => {
             throw new Error(OVERRIDDEN_EXIT_ERR_MSG);
-          },
-        });
+          };
+          overriddenExit.toString = () =>
+            "Use exit() or Ctrl-D (i.e. EOF) to exit";
+          return pyodide.toPy({
+            exit: overriddenExit,
+          });
+        })();
 
       try {
         pyodide.runPython(data.code, {
