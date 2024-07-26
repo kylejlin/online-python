@@ -1,6 +1,6 @@
 {
   "name": "koja",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "private": true,
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
