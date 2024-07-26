@@ -1,4 +1,5 @@
 import type { PyodideInterface } from "pyodide";
+import type { PyProxy } from "pyodide/ffi";
 import {
   InterruptSignalCode,
   MessageFromPyodideWorker,
@@ -12,6 +13,9 @@ import { KOJA_VERSION_WITHOUT_V } from "../version";
 export {};
 
 /* eslint-disable no-restricted-globals */
+
+const OVERRIDDEN_EXIT_ERR_MSG =
+  "exit() called. The default `exit` function is disabled.";
 
 let resolvePyodideProm: (pyodide: PyodideInterface) => void = () => {
   throw new Error(
@@ -37,6 +41,8 @@ let waitUntilMainThreadUnsetsWaitingFlag: () => void = () => {};
 
 let clearInterruptSignal: () => void = () => {};
 let checkInterruptSignal: () => void = () => {};
+
+let locals: undefined | PyProxy;
 
 self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
   const { data } = event;
@@ -98,12 +104,29 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
     clearInterruptSignal();
 
     pyodideProm.then((pyodide) => {
+      locals =
+        locals ??
+        pyodide.toPy({
+          exit: () => {
+            throw new Error(OVERRIDDEN_EXIT_ERR_MSG);
+          },
+        });
+
       try {
-        pyodide.runPython(data.code);
+        pyodide.runPython(data.code, {
+          locals,
+        });
         typesafePostMessage({
           kind: MessageFromPyodideWorkerKind.ExecutionSucceeded,
         });
       } catch (error) {
+        if (String(error).includes(OVERRIDDEN_EXIT_ERR_MSG)) {
+          typesafePostMessage({
+            kind: MessageFromPyodideWorkerKind.OverriddenExitCalled,
+          });
+          return;
+        }
+
         typesafePostMessage({
           kind: MessageFromPyodideWorkerKind.ExecutionError,
           errorString: String(error),

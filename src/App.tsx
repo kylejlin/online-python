@@ -494,6 +494,11 @@ export class App extends React.Component<AppProps, AppState> {
       return;
     }
 
+    if (data.kind === MessageFromPyodideWorkerKind.OverriddenExitCalled) {
+      this.setState({ isRunningCode: false });
+      return;
+    }
+
     if (data.kind === MessageFromPyodideWorkerKind.StdinRequest) {
       this.transferStdinToSharedBufferIfWaitingFlagIsSet();
       return;

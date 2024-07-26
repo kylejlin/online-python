@@ -31,6 +31,7 @@ export enum MessageFromPyodideWorkerKind {
   WorkerReady = "workerReady",
   ExecutionSucceeded = "executionSucceeded",
   ExecutionError = "executionError",
+  OverriddenExitCalled = "overriddenExitCalled",
   StdinRequest = "stdinRequest",
   StdoutUpdate = "stdoutUpdate",
   StderrUpdate = "stderrUpdate",
@@ -40,6 +41,7 @@ export type MessageFromPyodideWorker =
   | WorkerReadyMessage
   | ExecutionSucceededMessage
   | ExecutionErrorMessage
+  | OverriddenExitCalledMessage
   | StdinRequestMessage
   | StdoutUpdateMessage
   | StderrUpdateMessage;
@@ -55,6 +57,10 @@ export interface ExecutionSucceededMessage {
 export interface ExecutionErrorMessage {
   readonly kind: MessageFromPyodideWorkerKind.ExecutionError;
   readonly errorString: string;
+}
+
+export interface OverriddenExitCalledMessage {
+  readonly kind: MessageFromPyodideWorkerKind.OverriddenExitCalled;
 }
 
 export interface StdinRequestMessage {
