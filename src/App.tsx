@@ -337,8 +337,11 @@ export class App extends React.Component<AppProps, AppState> {
           >
             <div className="Console">
               <span className="ConsoleText">
-                {this.state.consoleText.map((segment) => (
-                  <span className={"ConsoleTextSegment--" + segment.kind}>
+                {this.state.consoleText.map((segment, index) => (
+                  <span
+                    key={index}
+                    className={"ConsoleTextSegment--" + segment.kind}
+                  >
                     {segment.text}
                   </span>
                 ))}
