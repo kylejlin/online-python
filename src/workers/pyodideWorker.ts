@@ -42,7 +42,7 @@ let waitUntilMainThreadUnsetsWaitingFlag: () => void = () => {};
 let clearInterruptSignal: () => void = () => {};
 let checkInterruptSignal: () => void = () => {};
 
-let locals: undefined | PyProxy;
+let mainScopeOverrides: undefined | PyProxy;
 
 self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
   const { data } = event;
@@ -104,8 +104,8 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
     clearInterruptSignal();
 
     pyodideProm.then((pyodide) => {
-      locals =
-        locals ??
+      mainScopeOverrides =
+        mainScopeOverrides ??
         ((): PyProxy => {
           const overriddenExit = () => {
             throw new Error(OVERRIDDEN_EXIT_ERR_MSG);
@@ -119,7 +119,8 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
 
       try {
         pyodide.runPython(data.code, {
-          locals,
+          locals: mainScopeOverrides,
+          globals: mainScopeOverrides,
         });
         typesafePostMessage({
           kind: MessageFromPyodideWorkerKind.ExecutionSucceeded,
