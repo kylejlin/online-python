@@ -190,6 +190,7 @@ export class App extends React.Component<AppProps, AppState> {
     this.downloadCodeAndCloseDownloadMenu =
       this.downloadCodeAndCloseDownloadMenu.bind(this);
     this.closeDownloadMenu = this.closeDownloadMenu.bind(this);
+    this.resetToDefaultSettings = this.resetToDefaultSettings.bind(this);
   }
 
   render() {
@@ -291,6 +292,12 @@ export class App extends React.Component<AppProps, AppState> {
             />{" "}
             Fix broken <code className="Code">exit</code> and{" "}
             <code className="Code">quit</code>
+          </div>
+          <div
+            className="SettingsMenuItem"
+            onClick={this.resetToDefaultSettings}
+          >
+            Reset to default settings
           </div>
         </section>
 
@@ -845,6 +852,14 @@ export class App extends React.Component<AppProps, AppState> {
 
   closeDownloadMenu(): void {
     this.setState({ isDownloadMenuOpen: false });
+  }
+
+  resetToDefaultSettings(): void {
+    localStorage.setItem(
+      LOCAL_STORAGE_SETTINGS_KEY,
+      JSON.stringify(DEFAULT_SETTINGS)
+    );
+    this.setState({ settings: DEFAULT_SETTINGS });
   }
 }
 
