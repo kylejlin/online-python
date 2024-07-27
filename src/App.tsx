@@ -162,8 +162,8 @@ export class App extends React.Component<AppProps, AppState> {
     this.handlePyodideWorkerMessage =
       this.handlePyodideWorkerMessage.bind(this);
     this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
-    this.focusConsoleInputIfPossible =
-      this.focusConsoleInputIfPossible.bind(this);
+    this.focusConsoleInputIfSelectionNotInConsole =
+      this.focusConsoleInputIfSelectionNotInConsole.bind(this);
     this.handleSettingsMenuButtonClick =
       this.handleSettingsMenuButtonClick.bind(this);
     this.focusSettingsMenuButtonIfPossible =
@@ -356,7 +356,7 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div
             className="ConsoleContainer"
-            onClick={this.focusConsoleInputIfPossible}
+            onClick={this.focusConsoleInputIfSelectionNotInConsole}
           >
             <div className="Console">
               <span className="ConsoleText">
@@ -695,11 +695,22 @@ export class App extends React.Component<AppProps, AppState> {
     Atomics.notify(i32arr, 0);
   }
 
-  focusConsoleInputIfPossible(): void {
+  focusConsoleInputIfSelectionNotInConsole(): void {
     const input = this.consoleInputRef.current;
     if (input === null) {
       return;
     }
+
+    const range = window.getSelection();
+    if (
+      range !== null &&
+      range.toString().length > 0 &&
+      range.anchorNode !== null &&
+      isConsoleOrConsoleDescendant(range.anchorNode)
+    ) {
+      return;
+    }
+
     input.focus();
   }
 
@@ -931,4 +942,16 @@ function getInitialSettings(): KojaSettings {
   } catch {
     return DEFAULT_SETTINGS;
   }
+}
+
+function isConsoleOrConsoleDescendant(elem: Node): boolean {
+  if (elem instanceof HTMLElement && elem.classList.contains("Console")) {
+    return true;
+  }
+
+  if (elem.parentElement === null) {
+    return false;
+  }
+
+  return isConsoleOrConsoleDescendant(elem.parentElement);
 }
