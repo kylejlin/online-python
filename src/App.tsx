@@ -497,7 +497,7 @@ export class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    if (data.kind === MessageFromPyodideWorkerKind.OverriddenExitCalled) {
+    if (data.kind === MessageFromPyodideWorkerKind.OverriddenExitOrQuitCalled) {
       this.setState({ isRunningCode: false });
       return;
     }

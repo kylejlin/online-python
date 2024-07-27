@@ -17,6 +17,11 @@ export {};
 const OVERRIDDEN_EXIT_ERR_MSG =
   "exit() called. The default `exit` function is disabled.";
 
+const OVERRIDDEN_QUIT_ERR_MSG =
+  "quit() called. The default `quit` function is disabled.";
+
+let mainScopeOverrides: undefined | PyProxy;
+
 let resolvePyodideProm: (pyodide: PyodideInterface) => void = () => {
   throw new Error(
     "resolvePyodideProm was called before it was set by the Promise callback."
@@ -41,8 +46,6 @@ let waitUntilMainThreadUnsetsWaitingFlag: () => void = () => {};
 
 let clearInterruptSignal: () => void = () => {};
 let checkInterruptSignal: () => void = () => {};
-
-let mainScopeOverrides: undefined | PyProxy;
 
 self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
   const { data } = event;
@@ -104,6 +107,28 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
     clearInterruptSignal();
 
     pyodideProm.then((pyodide) => {
+      // We need to override the `exit` and `quit` functions with
+      // our custom implementation.
+      // This is because the default `exit` and `quit` functions
+      // cause Pyodide to not process subsequent code execution requests correctly.
+      // Specifically, subsequent code execution requests will throw the error
+      // `TypeError: Cannot read properties of undefined (reading 'callKwargs')`.
+      //
+      // I don't know why this is.
+      // But in any case, it seems we must override the `exit` and `quit` functions
+      // to prevent this.
+      // If a future version of Pyodide fixes this issue, we can remove mainScopeOverrides.exit and mainScopeOverrides.quit.
+      //
+      // Our custom implementation of `exit` and `quit` will throw an error with a unique message.
+      // The problem with this is that the error message will be printed to the console,
+      // which is different then the expected behavior of `exit` and `quit`.
+      //
+      // So, in the `catch` clause of the `try` block that runs the user's code,
+      // we will check if the thrown error contains OVERRIDDEN_EXIT_ERR_MSG or OVERRIDDEN_QUIT_ERR_MSG.
+      // If it does, we send a OverriddenExitOrQuitCalledMessage  instead of an ExecutionErrorMessage.
+      // This allows the main thread to distinguish between the user calling `exit` or `quit` and an actual error.
+      // The main thread will only write to stderr in the latter case.
+
       mainScopeOverrides =
         mainScopeOverrides ??
         ((): PyProxy => {
@@ -112,8 +137,16 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
           };
           overriddenExit.toString = () =>
             "Use exit() or Ctrl-D (i.e. EOF) to exit";
+
+          const overriddenQuit = () => {
+            throw new Error(OVERRIDDEN_QUIT_ERR_MSG);
+          };
+          overriddenQuit.toString = () => {
+            "Use quit() or Ctrl-D (i.e. EOF) to exit";
+          };
           return pyodide.toPy({
             exit: overriddenExit,
+            quit: overriddenQuit,
           });
         })();
 
@@ -126,16 +159,20 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
           kind: MessageFromPyodideWorkerKind.ExecutionSucceeded,
         });
       } catch (error) {
-        if (String(error).includes(OVERRIDDEN_EXIT_ERR_MSG)) {
+        const errorString = String(error);
+        if (
+          errorString.includes(OVERRIDDEN_EXIT_ERR_MSG) ||
+          errorString.includes(OVERRIDDEN_QUIT_ERR_MSG)
+        ) {
           typesafePostMessage({
-            kind: MessageFromPyodideWorkerKind.OverriddenExitCalled,
+            kind: MessageFromPyodideWorkerKind.OverriddenExitOrQuitCalled,
           });
           return;
         }
 
         typesafePostMessage({
           kind: MessageFromPyodideWorkerKind.ExecutionError,
-          errorString: String(error),
+          errorString,
         });
       }
     });
