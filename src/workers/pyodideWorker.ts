@@ -20,7 +20,7 @@ const OVERRIDDEN_EXIT_ERR_MSG =
 const OVERRIDDEN_QUIT_ERR_MSG =
   "quit() called. The default `quit` function is disabled.";
 
-let mainScopeOverrides: undefined | PyProxy;
+let exitAndQuitOverrides: undefined | PyProxy;
 
 let resolvePyodideProm: (pyodide: PyodideInterface) => void = () => {
   throw new Error(
@@ -117,7 +117,7 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
       // I don't know why this is.
       // But in any case, it seems we must override the `exit` and `quit` functions
       // to prevent this.
-      // If a future version of Pyodide fixes this issue, we can remove mainScopeOverrides.exit and mainScopeOverrides.quit.
+      // If a future version of Pyodide fixes this issue, we can remove exitAndQuitOverrides.
       //
       // Our custom implementation of `exit` and `quit` will throw an error with a unique message.
       // The problem with this is that the error message will be printed to the console,
@@ -129,8 +129,8 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
       // This allows the main thread to distinguish between the user calling `exit` or `quit` and an actual error.
       // The main thread will only write to stderr in the latter case.
 
-      mainScopeOverrides =
-        mainScopeOverrides ??
+      exitAndQuitOverrides =
+        exitAndQuitOverrides ??
         ((): PyProxy => {
           const overriddenExit = () => {
             throw new Error(OVERRIDDEN_EXIT_ERR_MSG);
@@ -152,8 +152,8 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
 
       try {
         pyodide.runPython(data.code, {
-          locals: mainScopeOverrides,
-          globals: mainScopeOverrides,
+          locals: exitAndQuitOverrides,
+          globals: exitAndQuitOverrides,
         });
         typesafePostMessage({
           kind: MessageFromPyodideWorkerKind.ExecutionSucceeded,
