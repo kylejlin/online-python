@@ -162,6 +162,8 @@ export class App extends React.Component<AppProps, AppState> {
     this.handlePyodideWorkerMessage =
       this.handlePyodideWorkerMessage.bind(this);
     this.unsetWaitingFlag = this.unsetWaitingFlag.bind(this);
+    this.handleConsoleContainerClick =
+      this.handleConsoleContainerClick.bind(this);
     this.focusConsoleInputIfSelectionNotInConsole =
       this.focusConsoleInputIfSelectionNotInConsole.bind(this);
     this.handleSettingsMenuButtonClick =
@@ -356,7 +358,7 @@ export class App extends React.Component<AppProps, AppState> {
 
           <div
             className="ConsoleContainer"
-            onClick={this.focusConsoleInputIfSelectionNotInConsole}
+            onClick={this.handleConsoleContainerClick}
           >
             <div className="Console">
               <span className="ConsoleText">
@@ -693,6 +695,10 @@ export class App extends React.Component<AppProps, AppState> {
     const i32arr = new Int32Array(this.waitBuffer);
     Atomics.store(i32arr, 0, PyodideWorkerSignalCode.Ready);
     Atomics.notify(i32arr, 0);
+  }
+
+  handleConsoleContainerClick(): void {
+    requestAnimationFrame(this.focusConsoleInputIfSelectionNotInConsole);
   }
 
   focusConsoleInputIfSelectionNotInConsole(): void {
