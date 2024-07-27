@@ -99,6 +99,11 @@
   filter: brightness(0.8);
 }
 
+.Code {
+  font-family: monospace;
+  font-size: 12px;
+}
+
 .DownloadMenuContainer {
   position: absolute;
   top: 0;

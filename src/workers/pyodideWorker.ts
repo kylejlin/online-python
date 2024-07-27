@@ -151,10 +151,13 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
         })();
 
       try {
-        pyodide.runPython(data.code, {
-          locals: exitAndQuitOverrides,
-          globals: exitAndQuitOverrides,
-        });
+        const options = data.overrideExitAndQuit
+          ? {
+              locals: exitAndQuitOverrides,
+              globals: exitAndQuitOverrides,
+            }
+          : {};
+        pyodide.runPython(data.code, options);
         typesafePostMessage({
           kind: MessageFromPyodideWorkerKind.ExecutionSucceeded,
         });

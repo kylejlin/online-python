@@ -18,6 +18,7 @@ export type MessageToPyodideWorker = RunMessage | SetSharedBuffersMessage;
 export interface RunMessage {
   readonly kind: MessageToPyodideWorkerKind.Run;
   readonly code: string;
+  readonly overrideExitAndQuit: boolean;
 }
 
 export interface SetSharedBuffersMessage {

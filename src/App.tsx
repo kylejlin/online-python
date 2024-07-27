@@ -24,6 +24,7 @@ const DEFAULT_EDITOR_VALUE =
   'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\n';
 const DEFAULT_SETTINGS: KojaSettings = {
   clearConsoleOnRun: true,
+  overrideExitAndQuit: true,
 };
 
 const STDIN_BUFFER_SIZE = 400_000;
@@ -53,6 +54,7 @@ interface ConsoleTextSegment {
 
 interface KojaSettings {
   readonly clearConsoleOnRun: boolean;
+  readonly overrideExitAndQuit: boolean;
 }
 
 export class App extends React.Component<AppProps, AppState> {
@@ -179,6 +181,8 @@ export class App extends React.Component<AppProps, AppState> {
       this.handleSettingsMenuMouseLeave.bind(this);
     this.toggleAutomaticConsoleClearSetting =
       this.toggleAutomaticConsoleClearSetting.bind(this);
+    this.toggleOverrideExitAndQuitSetting =
+      this.toggleOverrideExitAndQuitSetting.bind(this);
     this.handleDownloadFileNameInputChange =
       this.handleDownloadFileNameInputChange.bind(this);
     this.handleDownloadFileNameFormSubmit =
@@ -275,6 +279,18 @@ export class App extends React.Component<AppProps, AppState> {
               readOnly
             />{" "}
             Clear console on run
+          </div>
+          <div
+            className="SettingsMenuItem"
+            onClick={this.toggleOverrideExitAndQuitSetting}
+          >
+            <input
+              type="checkbox"
+              checked={this.state.settings.overrideExitAndQuit}
+              readOnly
+            />{" "}
+            Fix broken <code className="Code">exit</code> and{" "}
+            <code className="Code">quit</code>
           </div>
         </section>
 
@@ -412,6 +428,7 @@ export class App extends React.Component<AppProps, AppState> {
         this.typesafePostMessage({
           kind: MessageToPyodideWorkerKind.Run,
           code: this.state.editorValue,
+          overrideExitAndQuit: this.state.settings.overrideExitAndQuit,
         });
       }
     );
@@ -794,6 +811,20 @@ export class App extends React.Component<AppProps, AppState> {
     });
   }
 
+  toggleOverrideExitAndQuitSetting(): void {
+    this.setState((prevState) => {
+      const newSettings: KojaSettings = {
+        ...prevState.settings,
+        overrideExitAndQuit: !prevState.settings.overrideExitAndQuit,
+      };
+      localStorage.setItem(
+        LOCAL_STORAGE_SETTINGS_KEY,
+        JSON.stringify(newSettings)
+      );
+      return { ...prevState, settings: newSettings };
+    });
+  }
+
   handleDownloadFileNameInputChange(
     event: React.ChangeEvent<HTMLInputElement>
   ): void {
@@ -875,7 +906,8 @@ function getInitialSettings(): KojaSettings {
     if (
       typeof settings === "object" &&
       settings !== null &&
-      typeof settings.clearConsoleOnRun === "boolean"
+      typeof settings.clearConsoleOnRun === "boolean" &&
+      typeof settings.overrideExitAndQuit === "boolean"
     ) {
       return settings;
     }
