@@ -8,7 +8,7 @@ import {
   MessageToPyodideWorkerKind,
   PyodideWorkerSignalCode,
 } from "../workerMessage";
-import { KOJA_VERSION_WITHOUT_V } from "../version";
+import { ONLINE_PYTHON_VERSION_WITHOUT_V } from "../version";
 
 export {};
 
@@ -86,11 +86,11 @@ self.onmessage = (event: MessageEvent<MessageToPyodideWorker>): void => {
 
       pyodide.registerJsModule("js", {});
       pyodide.registerJsModule("pyodide_js", {});
-      pyodide.registerJsModule("koja", {
+      pyodide.registerJsModule("online_python", {
         print_info: () => {
           handleStdoutRequest(
             new TextEncoder().encode(
-              `Koja v${KOJA_VERSION_WITHOUT_V}\nCopyright 2024 Kyle Lin.\n`
+              `Online Python v${ONLINE_PYTHON_VERSION_WITHOUT_V}\nCopyright 2024 Kyle Lin.\n`
             )
           );
         },

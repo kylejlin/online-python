@@ -17,12 +17,12 @@ monacoLoader.config({
   },
 });
 
-const LOCAL_STORAGE_CODE_KEY = "koja.pythonCode";
-const LOCAL_STORAGE_SETTINGS_KEY = "koja.settings";
+const LOCAL_STORAGE_CODE_KEY = "io.github.onlinePython.pythonCode";
+const LOCAL_STORAGE_SETTINGS_KEY = "io.github.onlinePython.settings";
 
 const DEFAULT_EDITOR_VALUE =
   'x = int(input("Enter a number: "))\ny = int(input("Enter a second number: "))\nz = x + y\nprint(f"The sum of the two numbers is {z}")\n';
-const DEFAULT_SETTINGS: KojaSettings = {
+const DEFAULT_SETTINGS: OnlinePythonSettings = {
   clearConsoleOnRun: true,
   overrideExitAndQuit: true,
 };
@@ -42,7 +42,7 @@ interface AppState {
   readonly isMouseOverSettingsMenu: boolean;
   readonly isDownloadMenuOpen: boolean;
   readonly downloadFileName: string;
-  readonly settings: KojaSettings;
+  readonly settings: OnlinePythonSettings;
 }
 
 type ConsoleTextSegmentKind = "stdin" | "stdout" | "stderr";
@@ -52,7 +52,7 @@ interface ConsoleTextSegment {
   readonly text: string;
 }
 
-interface KojaSettings {
+interface OnlinePythonSettings {
   readonly clearConsoleOnRun: boolean;
   readonly overrideExitAndQuit: boolean;
 }
@@ -823,7 +823,7 @@ export class App extends React.Component<AppProps, AppState> {
 
   toggleAutomaticConsoleClearSetting(): void {
     this.setState((prevState) => {
-      const newSettings: KojaSettings = {
+      const newSettings: OnlinePythonSettings = {
         ...prevState.settings,
         clearConsoleOnRun: !prevState.settings.clearConsoleOnRun,
       };
@@ -837,7 +837,7 @@ export class App extends React.Component<AppProps, AppState> {
 
   toggleOverrideExitAndQuitSetting(): void {
     this.setState((prevState) => {
-      const newSettings: KojaSettings = {
+      const newSettings: OnlinePythonSettings = {
         ...prevState.settings,
         overrideExitAndQuit: !prevState.settings.overrideExitAndQuit,
       };
@@ -927,7 +927,7 @@ function getInitialEditorValue(): string {
   return DEFAULT_EDITOR_VALUE;
 }
 
-function getInitialSettings(): KojaSettings {
+function getInitialSettings(): OnlinePythonSettings {
   const storedSettings = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
   if (storedSettings === null) {
     return DEFAULT_SETTINGS;

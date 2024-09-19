@@ -1,4 +1,4 @@
-# Koja
+# Online Python
 
 A simple online Python playground. [Try it now!](https://onlinepython.github.io/)
 
